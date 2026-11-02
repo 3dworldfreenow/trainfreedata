@@ -1,0 +1,55 @@
+{% extends "base.html" %}{% from "partials/macros.html" import status, fresh, csrf with context %}
+{% block title %}Settings & scheduler logs{% endblock %}
+{% block content %}
+<h1 class="h3">Settings &amp; scheduler</h1>
+<h2 class="h5 mt-3">Monitoring jobs</h2>
+<p class="small text-body-secondary">Pause/resume and interval changes are applied by the scheduler worker within ~15 s. Jobs never overlap (single instance + Redis lock). "Run now" also works on paused jobs.</p>
+<div class="table-responsive"><table class="table table-sm align-middle">
+  <thead><tr><th>Job</th><th>State</th><th>Schedule</th><th>Last run</th><th>Duration</th><th>Runs / fails</th><th>Next run</th><th>Message</th><th>Actions</th></tr></thead>
+  <tbody>{% for j in jobs %}
+    <tr><td><strong>{{ j.name }}</strong><div class="small text-body-secondary">{{ j.description }}</div></td>
+      <td>{{ status(j.last_status) }}{% if not j.enabled %} {{ status('paused') }}{% endif %}</td>
+      <td><form method="post" action="{{ url_for('views.settings_job', key=j.job_key) }}" class="d-flex gap-1">{{ csrf() }}<input type="hidden" name="action" value="save">
+        {% if j.trigger_type == 'interval' %}<input type="number" name="interval_seconds" min="60" value="{{ j.interval_seconds }}" class="form-control form-control-sm" style="width: 7rem" title="seconds">
+        {% else %}<input name="cron" value="{{ j.cron }}" class="form-control form-control-sm mono" style="width: 9rem" title="cron (IST)">{% endif %}
+        <button class="btn btn-sm btn-outline-secondary" title="save"><i class="bi bi-check"></i></button></form></td>
+      <td>{{ fresh(j.last_finished_at) }}</td><td>{{ (j.last_duration_ms ~ ' ms') if j.last_duration_ms is not none else '—' }}</td><td>{{ j.run_count }} / {{ j.failure_count }}</td>
+      <td class="small">{{ j.next_run_at|ist if j.next_run_at else '—' }}</td><td class="small text-break" style="max-width: 20rem">{{ j.last_message or '' }}</td>
+      <td class="text-nowrap">
+        <form method="post" action="{{ url_for('views.settings_job', key=j.job_key) }}" class="d-inline">{{ csrf() }}<input type="hidden" name="action" value="{{ 'pause' if j.enabled else 'resume' }}"><button class="btn btn-sm btn-outline-{{ 'warning' if j.enabled else 'success' }}">{{ 'Pause' if j.enabled else 'Resume' }}</button></form>
+        <form method="post" action="{{ url_for('views.settings_job', key=j.job_key) }}" class="d-inline">{{ csrf() }}<input type="hidden" name="action" value="run"><button class="btn btn-sm btn-outline-primary" {% if j.run_requested_at %}disabled{% endif %}>{{ 'Queued' if j.run_requested_at else 'Run now' }}</button></form>
+      </td></tr>
+  {% endfor %}</tbody>
+</table></div>
+
+<h2 class="h5 mt-4">Data sources</h2>
+<p class="small text-body-secondary">Set <em>automated access</em> to <strong>permitted</strong> only after confirming the source's terms allow programmatic use. Unverified/not-permitted sources are never polled automatically.</p>
+<div class="table-responsive"><table class="table table-sm align-middle">
+  <thead><tr><th>Source</th><th>Adapter</th><th>Enabled</th><th>Priority</th><th>Rate limit /min</th><th>Automated access</th><th></th></tr></thead>
+  <tbody>{% for s in sources %}
+    {% set fid = 'src-' ~ s.key %}
+    <tr>
+      <td>{{ s.name }}<div class="small"><code>{{ s.key }}</code></div></td><td><code>{{ s.adapter }}</code></td>
+      <td><input form="{{ fid }}" class="form-check-input" type="checkbox" name="enabled" value="1" {% if s.enabled %}checked{% endif %}></td>
+      <td><input form="{{ fid }}" type="number" name="priority" value="{{ s.priority }}" min="0" class="form-control form-control-sm" style="width: 5rem"></td>
+      <td><input form="{{ fid }}" type="number" name="rate_limit_per_minute" value="{{ s.rate_limit_per_minute }}" min="1" class="form-control form-control-sm" style="width: 6rem"></td>
+      <td><select form="{{ fid }}" name="automated_access" class="form-select form-select-sm">{% for a in ['permitted', 'not_permitted', 'unverified', 'not_applicable'] %}<option value="{{ a }}" {% if a == s.automated_access %}selected{% endif %}>{{ a|replace('_',' ') }}</option>{% endfor %}</select></td>
+      <td><form id="{{ fid }}" method="post" action="{{ url_for('views.settings_source', key=s.key) }}">{{ csrf() }}<button class="btn btn-sm btn-outline-primary">Save</button></form></td>
+    </tr>
+  {% endfor %}</tbody>
+</table></div>
+
+<h2 class="h5 mt-4">System logs</h2>
+<form class="row g-2 mb-2" method="get">
+  <div class="col-md-2"><select name="level" class="form-select form-select-sm"><option value="">All levels</option>{% for l in ['DEBUG','INFO','WARNING','ERROR','CRITICAL'] %}<option {% if l == level %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-md-3"><input name="component" value="{{ component }}" class="form-control form-control-sm" placeholder="Component prefix e.g. scheduler"></div>
+  <div class="col-md-1"><button class="btn btn-sm btn-primary w-100">Filter</button></div>
+  <div class="col-md-6 small text-body-secondary d-flex align-items-center">{% for l, c in counts.items() %}{{ l }}: {{ c }} &nbsp;{% endfor %}</div>
+</form>
+<div class="table-responsive"><table class="table table-sm table-striped table-sortable">
+  <thead><tr><th data-sort>Time</th><th data-sort>Level</th><th data-sort>Component</th><th>Message</th><th>Context</th></tr></thead>
+  <tbody>{% for l in logs %}
+    <tr class="{% if l.level in ['ERROR','CRITICAL'] %}table-danger{% elif l.level == 'WARNING' %}table-warning{% endif %}"><td class="small text-nowrap" data-value="{{ l.created_at }}">{{ l.created_at|ist }}</td><td>{{ l.level }}</td><td><code>{{ l.component }}</code></td><td class="small">{{ l.message }}</td><td class="small log-context" title="{{ l.context|tojson if l.context else '' }}">{{ l.context|tojson if l.context else '' }}</td></tr>
+  {% else %}<tr><td colspan="5" class="text-body-secondary">No log entries.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}{% from "partials/macros.html" import kind, chart, pcode, manual_box, envelope_meta, csrf with context %}
+{% block title %}PNR enquiry{% endblock %}
+{% block content %}
+<h1 class="h3">PNR enquiry</h1>
+<p class="text-body-secondary small">PNRs are encrypted at rest and only the last four digits are displayed. Passenger names are never stored.</p>
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card"><div class="card-body">
+      <form method="post">{{ csrf() }}
+        <div class="mb-2"><label class="form-label">10-digit PNR</label><input class="form-control form-control-lg mono" name="pnr" inputmode="numeric" pattern="\d{10}" maxlength="10" required autocomplete="off"></div>
+        <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="save" value="1" id="save" checked><label class="form-check-label" for="save">Save for monitoring</label></div>
+        <div class="row g-2 mb-2">
+          <div class="col-6"><input class="form-control form-control-sm" name="label" placeholder="Label (optional)" maxlength="64"></div>
+          <div class="col-6"><input type="date" class="form-control form-control-sm" name="journey_date" title="Journey (boarding) date"></div>
+          <div class="col-6"><input class="form-control form-control-sm" name="train_number" placeholder="Train no. (optional)" maxlength="10"></div>
+          <div class="col-6"><input class="form-control form-control-sm text-uppercase" name="boarding_station_code" placeholder="Boarding stn code" maxlength="10"></div>
+        </div>
+        <div class="form-text mb-2">Journey date / train / boarding station are optional; they let the monitor pace checks as departure approaches (never to assume chart status).</div>
+        <button class="btn btn-primary">Check status</button>
+      </form>
+      {% if error %}<div class="alert alert-danger mt-3 mb-0">{{ error }}</div>{% endif %}
+    </div></div>
+  </div>
+  <div class="col-lg-7">
+    {% if result %}
+    <div class="card"><div class="card-header">Result for PNR ******{{ last4 }} {{ envelope_meta(result) }}</div><div class="card-body">
+      {% if result.status == 'ok' %}{% set d = result.data %}
+        <div class="mb-2"><strong>{{ d.train_number }} {{ d.train_name or '' }}</strong> · {{ d.journey_date or '' }} · {{ d.from_station_code or '' }} → {{ d.to_station_code or '' }} · {{ d.travel_class or '' }} {{ chart(d.chart_status) }}</div>
+        <table class="table table-sm"><thead><tr><th>#</th><th>Booking status</th><th>Current status</th></tr></thead><tbody>
+        {% for p in d.passengers %}<tr><td>{{ p.serial }}</td><td>{{ pcode(p.booking_code) }} {{ p.booking_status or '—' }}</td><td>{{ pcode(p.current_code) }} {{ p.current_status or '—' }}</td></tr>{% endfor %}
+        </tbody></table>
+      {% elif result.status == 'manual_required' %}
+        {{ manual_box(result.manual_enquiry, 'Automated PNR enquiry is not permitted by any enabled source') }}
+        <p class="small mb-0">Save the PNR (checkbox on the left) to record the status you see on the official page; changes and chart status will then be tracked with timestamps.</p>
+      {% else %}
+        <div class="text-danger">{{ result.error }}</div>
+      {% endif %}
+    </div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

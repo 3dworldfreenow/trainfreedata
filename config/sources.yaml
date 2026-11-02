@@ -1,0 +1,81 @@
+# Data sources seeded into the api_sources table (flask railmon sync-sources).
+# Descriptive fields are refreshed on every sync; operational fields
+# (enabled, priority, rate_limit_per_minute, config) are only set on first
+# insert unless you pass --reset, so admin changes made in the UI are kept.
+#
+# automated_access:
+#   permitted       - documented permission / open licence for programmatic use
+#   not_permitted   - CAPTCHA, login, or terms that forbid automation (manual only)
+#   unverified      - no documentation either way; treated as not permitted
+#   not_applicable  - local data, no remote calls
+sources:
+  - key: static_timetable
+    name: Static timetable (datameet open data, CC0)
+    adapter: static_timetable
+    base_url: https://github.com/datameet/railways
+    documentation_url: https://github.com/datameet/railways#readme
+    automated_access: not_applicable
+    enabled: true
+    priority: 10
+    rate_limit_per_minute: 100000
+    notes: >
+      Imported once into MySQL (stations, trains, routes). CC0 licence. Snapshot
+      compiled c. 2016 - timings, numbers and routes may have changed since. No
+      running-day information. Shown as STATIC data, never as live.
+
+  - key: ntes
+    name: NTES - National Train Enquiry System (official)
+    adapter: ntes_manual
+    base_url: https://enquiry.indianrail.gov.in/mntes/
+    documentation_url: https://enquiry.indianrail.gov.in/mntes/
+    automated_access: unverified
+    enabled: true
+    priority: 50
+    rate_limit_per_minute: 2
+    config: {probe: true}
+    notes: >
+      Official running status, live station boards and exceptional trains
+      (cancelled / rescheduled / diverted). No documented public API and no terms
+      granting automated access; resets connections from some non-Indian IPs.
+      Used as MANUAL enquiry fallback only (deep link). Health probe = one GET of
+      the landing page, subject to robots.txt.
+
+  - key: indianrail_pnr
+    name: Indian Railways PNR enquiry (official)
+    adapter: indianrail_pnr_manual
+    base_url: https://www.indianrail.gov.in/enquiry/PNR/PnrEnquiry.html?locale=en
+    documentation_url: https://www.indianrail.gov.in/
+    automated_access: not_permitted
+    enabled: true
+    priority: 50
+    rate_limit_per_minute: 2
+    config: {probe: true}
+    notes: >
+      robots.txt allows crawling but the PNR form requires a CAPTCHA. CAPTCHAs are
+      never bypassed, so PNR / chart status is entered manually by the user after
+      checking the official page (or SMS 'PNR <number>' to 139).
+
+  - key: manual
+    name: Manual entry (user-recorded from official channels)
+    adapter: manual_entry
+    automated_access: not_applicable
+    enabled: true
+    priority: 90
+    rate_limit_per_minute: 100000
+    notes: Statuses typed in by signed-in users. Always labelled MANUAL in the UI.
+
+  # Example of an optional source with documented permission. Disabled by default.
+  - key: custom_api
+    name: Custom permitted JSON API (optional)
+    adapter: generic_http
+    automated_access: unverified
+    enabled: false
+    priority: 20
+    rate_limit_per_minute: 6
+    config:
+      endpoints: {}
+      headers: {Accept: application/json}
+    notes: >
+      Template for a free source that documents/permits programmatic access.
+      Fill in endpoints, set automated_access to 'permitted' only after checking
+      its terms, then enable it.

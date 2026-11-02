@@ -1,0 +1,43 @@
+{% extends "base.html" %}{% from "partials/macros.html" import kind, fresh, manual_box, envelope_meta, csrf with context %}
+{% block title %}{{ station.code }} station board{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div><h1 class="h3 mb-1"><span class="mono">{{ station.code }}</span> {{ station.name }}</h1>
+    <div class="text-body-secondary">{{ station.state or '' }} · Zone {{ station.zone or '—' }}{% if station.latitude %} · {{ '%.4f'|format(station.latitude) }}, {{ '%.4f'|format(station.longitude) }}{% endif %}</div></div>
+  <div class="d-flex gap-2">
+    <form method="get" class="d-flex gap-1"><select name="hours" class="form-select form-select-sm" onchange="this.form.submit()">{% for h in [1,2,4,6,8] %}<option value="{{ h }}" {% if h == hours %}selected{% endif %}>next {{ h }} h</option>{% endfor %}</select></form>
+    {% if g.user and g.user.role == 'admin' %}
+    <form method="post" action="{{ url_for('views.station_toggle_monitor', code=station.code) }}">{{ csrf() }}<button class="btn btn-sm btn-outline-secondary">{{ 'Stop monitoring' if station.is_monitored else 'Monitor board' }}</button></form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mb-3"><div class="card-header">Live station board {{ envelope_meta(board.live) }}</div><div class="card-body">
+  {% if board.live.status == 'ok' %}
+    {% set entries = board.live.data.entries or [] %}
+    <input class="form-control form-control-sm mb-2" placeholder="Filter…" data-filter="#liveboard">
+    <div class="table-responsive"><table class="table table-sm table-striped table-sortable" id="liveboard">
+      <thead><tr><th data-sort>Train</th><th data-sort>Name</th><th data-sort>Sch arr</th><th data-sort>Sch dep</th><th data-sort>Exp arr</th><th data-sort>Exp dep</th><th data-sort>Delay</th><th data-sort>PF</th><th>Status</th></tr></thead>
+      <tbody>{% for e in entries %}<tr><td>{{ e.train_number }}</td><td>{{ e.train_name or '' }}</td><td>{{ e.sch_arr or '—' }}</td><td>{{ e.sch_dep or '—' }}</td><td>{{ e.exp_arr or '—' }}</td><td>{{ e.exp_dep or '—' }}</td><td>{{ e.delay_minutes if e.delay_minutes is not none else '—' }}</td><td>{{ e.platform or '—' }}</td><td>{{ e.status or '' }}</td></tr>
+      {% else %}<tr><td colspan="9" class="text-body-secondary">Source returned no trains in this window.</td></tr>{% endfor %}</tbody>
+    </table></div>
+  {% elif board.live.status == 'manual_required' %}
+    {{ manual_box(board.live.manual_enquiry) }}
+    {% if board.last_snapshot %}<div class="small">Last stored board snapshot: {{ kind(board.last_snapshot.data_kind) }} {{ fresh(board.last_snapshot.last_confirmed_at) }} ({{ board.last_snapshot.entries|length }} trains)</div>{% endif %}
+  {% else %}
+    <div class="text-danger">Live board unavailable: {{ board.live.error }}</div>
+  {% endif %}
+</div></div>
+
+<div class="card"><div class="card-header d-flex justify-content-between"><span>Scheduled calls (timetable) — next {{ [hours, 4]|max }} h {{ kind('static') }}</span></div><div class="card-body">
+  {% if board.scheduled.status == 'ok' %}
+    <div class="alert alert-secondary small py-2"><i class="bi bi-info-circle"></i> {{ board.scheduled.data.note }}</div>
+    <input class="form-control form-control-sm mb-2" placeholder="Filter…" data-filter="#sched">
+    <div class="table-responsive"><table class="table table-sm table-striped table-sortable" id="sched">
+      <thead><tr><th data-sort>Train</th><th data-sort>Name</th><th data-sort>Sch arr</th><th data-sort>Sch dep</th><th data-sort>From</th><th data-sort>To</th><th>Runs</th></tr></thead>
+      <tbody>{% for e in board.scheduled.data.entries %}<tr><td><a class="mono" href="{{ url_for('views.train_detail', number=e.train_number) }}">{{ e.train_number }}</a></td><td>{{ e.train_name }}</td><td>{{ e.sch_arr|hhmm }}</td><td>{{ e.sch_dep|hhmm }}</td><td>{{ e.source_station_code or '' }}</td><td>{{ e.destination_station_code or '' }}</td><td class="small">{{ e.running_days|days }}</td></tr>
+      {% else %}<tr><td colspan="7" class="text-body-secondary">No scheduled halts in this window.</td></tr>{% endfor %}</tbody>
+    </table></div>
+  {% else %}<div class="text-body-secondary">Timetable unavailable ({{ board.scheduled.status }}: {{ board.scheduled.error }}).</div>{% endif %}
+</div></div>
+{% endblock %}

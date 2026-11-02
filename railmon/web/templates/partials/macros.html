@@ -1,0 +1,74 @@
+{% macro kind(k) -%}
+  {%- if k -%}<span class="badge kind-{{ k }}" title="data kind">{{ k|upper }}</span>{%- else -%}<span class="badge text-bg-light">N/A</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro status(s) -%}
+  {%- set map = {'up':'success','ok':'success','success':'success','manual_only':'warning','manual_required':'warning',
+                 'degraded':'warning','skipped':'secondary','paused':'secondary','disabled':'secondary','never_run':'light',
+                 'running':'info','not_applicable':'light','unknown':'light','rate_limited':'warning',
+                 'down':'danger','failed':'danger','error':'danger','unavailable':'danger','not_found':'secondary'} -%}
+  <span class="badge text-bg-{{ map.get(s, 'secondary') }}">{{ (s or 'unknown')|replace('_', ' ') }}</span>
+{%- endmacro %}
+
+{% macro fresh(dt) -%}
+  {%- set m = age_minutes(dt) -%}
+  {%- if m is none -%}<span class="badge text-bg-light">never</span>
+  {%- elif m <= stale_after -%}<span class="badge text-bg-success" title="{{ dt|ist }}">{{ dt|age }}</span>
+  {%- elif m <= stale_after * 8 -%}<span class="badge text-bg-warning" title="{{ dt|ist }}">{{ dt|age }} (stale)</span>
+  {%- else -%}<span class="badge text-bg-danger" title="{{ dt|ist }}">{{ dt|age }} (stale)</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro chart(s) -%}
+  {%- if s == 'prepared' -%}<span class="badge text-bg-success"><i class="bi bi-check2-circle"></i> Chart prepared</span>
+  {%- elif s == 'not_prepared' -%}<span class="badge text-bg-warning">Chart not prepared</span>
+  {%- else -%}<span class="badge text-bg-light" title="No source has reported chart status yet">Chart status unknown</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro pcode(c) -%}
+  {%- set map = {'CNF':'success','RAC':'info','CAN':'dark','OTHER':'secondary'} -%}
+  {%- if c -%}<span class="badge text-bg-{{ map.get(c, 'warning') }}">{{ c }}</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro manual_box(links, title='Live data not available automatically') -%}
+  {% if links %}
+  <div class="alert alert-warning">
+    <div class="fw-semibold mb-1"><i class="bi bi-box-arrow-up-right"></i> {{ title }}</div>
+    {% for m in links %}
+      <div class="mb-1">
+        <a href="{{ m.url }}" target="_blank" rel="noopener noreferrer" class="fw-semibold">{{ m.name }}</a> —
+        {{ m.instructions }}
+        {% if m.reason %}<div class="small text-body-secondary">Why: {{ m.reason }}</div>{% endif %}
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{%- endmacro %}
+
+{% macro envelope_meta(r) -%}
+  <span class="small text-body-secondary">
+    {{ status(r.status) }} {% if r.status in ('ok', 'not_found') %}{{ kind('cached' if r.cached else r.data_kind) }}{% endif %}
+    {% if r.source %}source: <code>{{ r.source }}</code>{% endif %}
+    {% if r.fetched_at %}· fetched {{ r.fetched_at[:19]|replace('T',' ') }} UTC{% endif %}
+  </span>
+{%- endmacro %}
+
+{% macro pager(page, pages) -%}
+  {% if pages > 1 %}
+  {% set args = request.args.to_dict() %}
+  <nav><ul class="pagination pagination-sm flex-wrap">
+    <li class="page-item {% if page <= 1 %}disabled{% endif %}"><a class="page-link" href="?{{ dict(args, page=page-1)|urlencode }}">&laquo;</a></li>
+    {% for p in range([1, page-3]|max, [pages, page+3]|min + 1) %}
+      <li class="page-item {% if p == page %}active{% endif %}"><a class="page-link" href="?{{ dict(args, page=p)|urlencode }}">{{ p }}</a></li>
+    {% endfor %}
+    <li class="page-item {% if page >= pages %}disabled{% endif %}"><a class="page-link" href="?{{ dict(args, page=page+1)|urlencode }}">&raquo;</a></li>
+  </ul></nav>
+  {% endif %}
+{%- endmacro %}
+
+{% macro sort_th(label, key) -%}
+  {% set args = request.args.to_dict() %}
+  {% set cur = args.get('sort', 'number') %}{% set d = args.get('dir', 'asc') %}
+  <th><a class="link-body-emphasis text-decoration-none" href="?{{ dict(args, sort=key, dir=('desc' if cur == key and d == 'asc' else 'asc'), page=1)|urlencode }}">{{ label }}{% if cur == key %} <i class="bi bi-caret-{{ 'up' if d == 'asc' else 'down' }}-fill"></i>{% endif %}</a></th>
+{%- endmacro %}
+
+{% macro csrf() -%}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{%- endmacro %}

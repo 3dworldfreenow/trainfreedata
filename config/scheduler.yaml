@@ -1,0 +1,56 @@
+# Monitoring jobs seeded into the monitoring_jobs table (flask railmon sync-jobs).
+# After seeding, the database is the source of truth: pause/resume, intervals
+# and "run now" are controlled from Settings in the dashboard. Use
+# `flask railmon sync-jobs --reset` to re-apply this file.
+#
+# trigger: interval (interval_seconds) or cron (5-field, Asia/Kolkata time).
+# Every job runs with max_instances=1 + a Redis lock, so runs never overlap.
+jobs:
+  - key: train_status
+    name: Train running status
+    description: Refresh running status for trains marked "monitored". Skips when no automated source is available.
+    trigger: interval
+    interval_seconds: 300
+    config: {max_trains_per_run: 50}
+  - key: station_boards
+    name: Station boards
+    description: Refresh live boards for stations marked "monitored".
+    trigger: interval
+    interval_seconds: 300
+    config: {max_stations_per_run: 20, window_hours: 2}
+  - key: disruptions
+    name: Cancelled / rescheduled / diverted trains
+    description: Daily exceptional-train report for today and tomorrow.
+    trigger: cron
+    cron: "30 5 * * *"
+    config: {days_ahead: 1}
+  - key: pnr_checks
+    name: Saved PNR checks
+    description: Check saved PNRs that are due (adaptive interval, per-run cap).
+    trigger: interval
+    interval_seconds: 600
+    config: {}
+  - key: chart_checks
+    name: Chart preparation checks
+    description: Check chart status for PNRs whose chart check is due (tighter near departure).
+    trigger: interval
+    interval_seconds: 300
+    config: {max_per_run: 20}
+  - key: source_health
+    name: Source health probes
+    description: Low-frequency reachability probe of each source.
+    trigger: interval
+    interval_seconds: 1800
+    config: {}
+  - key: daily_summary
+    name: Daily summary report
+    description: Build the daily railway summary for today (IST) and yesterday.
+    trigger: cron
+    cron: "55 23 * * *"
+    config: {}
+  - key: retention
+    name: Data retention
+    description: Purge expired PNRs, old logs, health checks and live snapshots.
+    trigger: cron
+    cron: "15 3 * * *"
+    config: {}

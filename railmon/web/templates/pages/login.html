@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% from "partials/macros.html" import csrf with context %}
+{% block title %}Log in{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-sm-8 col-md-5 col-lg-4">
+  <div class="card shadow-sm"><div class="card-body">
+    <h1 class="h4 mb-3">Log in</h1>
+    <form method="post">{{ csrf() }}
+      <div class="mb-3"><label class="form-label">Username</label><input class="form-control" name="username" autocomplete="username" required autofocus></div>
+      <div class="mb-3"><label class="form-label">Password</label><input class="form-control" type="password" name="password" autocomplete="current-password" required></div>
+      <button class="btn btn-primary w-100">Log in</button>
+    </form>
+    <p class="small text-body-secondary mt-3 mb-0">Accounts are created by the administrator with <code>flask railmon create-user</code>.</p>
+  </div></div>
+</div></div>
+{% endblock %}

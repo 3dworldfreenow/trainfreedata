@@ -1,0 +1,53 @@
+{% extends "base.html" %}{% from "partials/macros.html" import kind, pager, manual_box, csrf with context %}
+{% block title %}{{ dtype|replace('_',' ')|title }} trains{% endblock %}
+{% block content %}
+<h1 class="h3">{% if dtype == 'all' %}All disruptions{% else %}{{ dtype|replace('_',' ')|title }} trains{% endif %}</h1>
+<ul class="nav nav-tabs mb-3">
+  {% for t in ['cancelled', 'rescheduled', 'diverted', 'partially_cancelled', 'short_terminated', 'short_originated', 'all'] %}
+  <li class="nav-item"><a class="nav-link {% if t == dtype %}active{% endif %}" href="{{ url_for('views.disruptions', dtype=t, **{'from': d_from.isoformat(), 'to': d_to.isoformat()}) }}">{{ t|replace('_',' ')|title }}</a></li>
+  {% endfor %}
+</ul>
+{{ manual_box(manual, 'No permitted automated source for this report — official list') }}
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-2"><label class="form-label small">From</label><input type="date" class="form-control" name="from" value="{{ d_from.isoformat() }}"></div>
+  <div class="col-md-2"><label class="form-label small">To</label><input type="date" class="form-control" name="to" value="{{ d_to.isoformat() }}"></div>
+  <div class="col-md-3"><label class="form-label small">Train / station</label><input class="form-control" name="q" value="{{ request.args.q or '' }}" placeholder="Train no., name or station code"></div>
+  <div class="col-md-1 d-flex align-items-end"><button class="btn btn-primary w-100">Search</button></div>
+</form>
+<div class="d-flex justify-content-between"><div class="small text-body-secondary">{{ total }} records (searchable history)</div>{{ pager(page, pages) }}</div>
+<div class="table-responsive"><table class="table table-sm table-striped table-sortable">
+  <thead><tr><th data-sort>Date</th><th data-sort>Train</th><th data-sort>Name</th><th data-sort>Type</th><th data-sort>Route</th><th>Affected / details</th><th data-sort>Reason</th><th>Data</th><th data-sort>First seen</th></tr></thead>
+  <tbody>{% for d in rows %}
+    <tr><td>{{ d.journey_date }}</td><td><a class="mono" href="{{ url_for('views.train_detail', number=d.train_number) }}">{{ d.train_number }}</a></td><td>{{ d.train_name or '' }}</td><td>{{ d.disruption_type|replace('_',' ') }}</td>
+      <td>{{ d.from_station_code or '' }}{% if d.to_station_code %} → {{ d.to_station_code }}{% endif %}</td>
+      <td class="small">{% if d.affected_from_code %}{{ d.affected_from_code }}–{{ d.affected_to_code }}{% endif %}
+        {% if d.rescheduled_departure %}New dep {{ d.rescheduled_departure|ist }}{% endif %}{% if d.rescheduled_by_minutes %} (+{{ d.rescheduled_by_minutes }} min){% endif %}
+        {% if d.diverted_route %}Via {{ d.diverted_route }}{% endif %}</td>
+      <td class="small">{{ d.reason or '' }}</td><td>{{ kind(d.data_kind) }}</td><td class="small" data-value="{{ d.first_seen_at }}">{{ d.first_seen_at|ist }}</td></tr>
+  {% else %}<tr><td colspan="9" class="text-body-secondary">No disruptions recorded for this period. This does not mean there were none — see source status above.</td></tr>{% endfor %}</tbody>
+</table></div>
+{{ pager(page, pages) }}
+
+{% if g.user and g.user.role == 'admin' %}
+<div class="row g-3 mt-2">
+  <div class="col-lg-7"><div class="card"><div class="card-header">Record a disruption from an official notice {{ kind('manual') }}</div><div class="card-body">
+    <form method="post" action="{{ url_for('views.disruption_manual') }}" class="row g-2">{{ csrf() }}
+      <div class="col-md-3"><input type="date" class="form-control form-control-sm" name="journey_date" required></div>
+      <div class="col-md-3"><input class="form-control form-control-sm" name="train_number" placeholder="Train no." required maxlength="10"></div>
+      <div class="col-md-3"><select class="form-select form-select-sm" name="disruption_type">{% for t in types %}<option value="{{ t }}" {% if t == dtype %}selected{% endif %}>{{ t|replace('_',' ') }}</option>{% endfor %}</select></div>
+      <div class="col-md-3"><input class="form-control form-control-sm" name="reason" placeholder="Reason" maxlength="255"></div>
+      <div class="col-md-3"><input class="form-control form-control-sm text-uppercase" name="affected_from_code" placeholder="Affected from"></div>
+      <div class="col-md-3"><input class="form-control form-control-sm text-uppercase" name="affected_to_code" placeholder="Affected to"></div>
+      <div class="col-md-3"><input class="form-control form-control-sm" name="rescheduled_by_minutes" type="number" placeholder="Rescheduled by (min)"></div>
+      <div class="col-md-3"><input class="form-control form-control-sm" name="diverted_route" placeholder="Diverted via"></div>
+      <div class="col-12"><button class="btn btn-sm btn-outline-primary">Save</button></div>
+    </form></div></div></div>
+  <div class="col-lg-5"><div class="card"><div class="card-header">Import CSV {{ kind('manual') }}</div><div class="card-body">
+    <form method="post" action="{{ url_for('views.disruption_import') }}" enctype="multipart/form-data">{{ csrf() }}
+      <input type="file" class="form-control form-control-sm mb-2" name="file" accept=".csv,text/csv" required>
+      <div class="form-text mb-2">Columns: <code>date,train_number,type,train_name,from_station_code,to_station_code,affected_from_code,affected_to_code,rescheduled_departure,rescheduled_by_minutes,diverted_route,reason</code>. See <code>docs/samples/disruptions.csv</code>.</div>
+      <button class="btn btn-sm btn-outline-primary">Import</button>
+    </form></div></div></div>
+</div>
+{% endif %}
+{% endblock %}

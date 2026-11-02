@@ -1,0 +1,25 @@
+[Unit]
+Description=RailMon scheduler worker (APScheduler monitoring jobs)
+After=network-online.target mysql.service redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=railmon
+Group=railmon
+WorkingDirectory=/opt/railmon/app
+EnvironmentFile=/opt/railmon/app/.env
+ExecStart=/opt/railmon/venv/bin/python -m railmon.scheduler
+# graceful shutdown lets the running job finish
+KillSignal=SIGTERM
+TimeoutStopSec=120
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/railmon/app/data
+
+[Install]
+WantedBy=multi-user.target

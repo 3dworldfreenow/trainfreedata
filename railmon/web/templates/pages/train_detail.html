@@ -1,0 +1,82 @@
+{% extends "base.html" %}{% from "partials/macros.html" import kind, fresh, status, manual_box, envelope_meta, csrf with context %}
+{% block title %}Train {{ train.number if train else '' }}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-1"><span class="mono">{{ train.number }}</span> {{ train.name }}</h1>
+    <div class="text-body-secondary">
+      {{ train.source_station_code }} → {{ train.destination_station_code }} · {{ train.train_type or 'type unknown' }} · Zone {{ train.zone or '—' }}
+      · Dep {{ train.departure_time|hhmm }} · Arr {{ train.arrival_time|hhmm }} · {{ train.distance_km or '?' }} km · Runs: {{ train.running_days|days }}
+      {{ kind('static') }}
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-primary" href="?check=1"><i class="bi bi-arrow-repeat"></i> Check running status</a>
+    {% if g.user and g.user.role == 'admin' %}
+    <form method="post" action="{{ url_for('views.train_toggle_monitor', number=train.number) }}">{{ csrf() }}
+      <button class="btn btn-outline-secondary">{% if train.is_monitored %}<i class="bi bi-eye-slash"></i> Stop monitoring{% else %}<i class="bi bi-eye"></i> Monitor{% endif %}</button></form>
+    {% endif %}
+  </div>
+</div>
+
+{% if live %}
+<div class="card mb-3"><div class="card-header">Running status enquiry {{ envelope_meta(live) }}</div><div class="card-body">
+  {% if live.status == 'ok' %}
+    {% set d = live.data %}
+    <div class="row">
+      <div class="col-md-3"><div class="text-body-secondary small">Status</div><div class="fs-5">{{ d.running_status or '—' }}</div></div>
+      <div class="col-md-3"><div class="text-body-secondary small">Last reported</div><div class="fs-5">{{ d.last_reported_station_code or '—' }}</div><div class="small">{{ d.last_reported_at or '' }}</div></div>
+      <div class="col-md-3"><div class="text-body-secondary small">Delay</div><div class="fs-5">{{ d.delay_minutes if d.delay_minutes is not none else '—' }} min</div></div>
+      <div class="col-md-3"><div class="text-body-secondary small">Next station / ETA</div><div class="fs-5">{{ d.next_station_code or '—' }}</div><div class="small">{{ d.eta or '' }}</div></div>
+    </div>
+  {% elif live.status == 'manual_required' %}
+    {{ manual_box(live.manual_enquiry) }}
+  {% else %}
+    <div class="text-danger">Running status unavailable: {{ live.error }}</div>
+  {% endif %}
+</div></div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-xl-7">
+    <div class="card"><div class="card-header d-flex justify-content-between"><span>Timetable / route</span><span>{{ kind('static') }}</span></div>
+      {% if schedule.status == 'ok' %}
+      <div class="card-body py-2 small text-body-secondary">Source: {{ schedule.data.data_source }}{% if schedule.data.imported_at %}, imported {{ schedule.data.imported_at[:10] }}{% endif %}. Published timetable — may differ from today's actual running. Pass-through points are greyed.</div>
+      <div class="table-responsive" style="max-height: 70vh"><table class="table table-sm table-striped mb-0">
+        <thead class="sticky-top"><tr><th>#</th><th>Station</th><th>Arr</th><th>Dep</th><th>Day</th></tr></thead>
+        <tbody>{% for s in schedule.data.stops %}
+          <tr class="{% if not s.is_halt %}passthru{% endif %}"><td>{{ s.seq }}</td><td><a href="{{ url_for('views.station_board', code=s.station_code) }}" class="mono">{{ s.station_code }}</a> {{ s.station_name or '' }}</td><td>{{ s.arrival|hhmm }}</td><td>{{ s.departure|hhmm }}</td><td>{{ s.day or '' }}</td></tr>
+        {% else %}<tr><td colspan="5" class="text-body-secondary">No route stops in the timetable.</td></tr>{% endfor %}</tbody>
+      </table></div>
+      {% else %}<div class="card-body text-body-secondary">Timetable unavailable ({{ schedule.status }}).</div>{% endif %}
+    </div>
+  </div>
+  <div class="col-xl-5">
+    <div class="card mb-3"><div class="card-header">Status history (snapshots stored on change)</div>
+      <div class="table-responsive"><table class="table table-sm mb-0">
+        <thead><tr><th>Journey</th><th>Status</th><th>Last stn</th><th>Delay</th><th>Data</th><th>Seen</th></tr></thead>
+        <tbody>{% for h in history %}
+          <tr><td>{{ h.journey_date or '—' }}</td><td>{{ h.running_status or '—' }}</td><td title="{{ names.get(h.last_reported_station_code, '') }}">{{ h.last_reported_station_code or '—' }}</td><td>{{ h.delay_minutes if h.delay_minutes is not none else '—' }}</td><td>{{ kind(h.data_kind) }}</td><td>{{ fresh(h.last_confirmed_at) }}</td></tr>
+        {% else %}<tr><td colspan="6" class="text-body-secondary">No running-status snapshots recorded.</td></tr>{% endfor %}</tbody>
+      </table></div>
+    </div>
+    <div class="card mb-3"><div class="card-header">Disruptions (last 30 days)</div>
+      <ul class="list-group list-group-flush">{% for d in disruptions %}
+        <li class="list-group-item small">{{ d.journey_date }} — <strong>{{ d.disruption_type|replace('_',' ') }}</strong> {{ d.affected_from_code or '' }}{% if d.affected_to_code %}–{{ d.affected_to_code }}{% endif %} {{ d.reason or '' }} {{ kind(d.data_kind) }}</li>
+      {% else %}<li class="list-group-item small text-body-secondary">None recorded.</li>{% endfor %}</ul>
+    </div>
+    {% if g.user %}
+    <div class="card"><div class="card-header">Record status seen on NTES / official channel {{ kind('manual') }}</div><div class="card-body">
+      <form method="post" action="{{ url_for('views.train_manual_status', number=train.number) }}" class="row g-2">{{ csrf() }}
+        <div class="col-6"><label class="form-label small">Journey date</label><input type="date" class="form-control form-control-sm" name="journey_date" value="{{ today.isoformat() }}" required></div>
+        <div class="col-6"><label class="form-label small">Status</label><select class="form-select form-select-sm" name="running_status"><option>running</option><option>not_started</option><option>arrived</option><option>cancelled</option><option>rescheduled</option><option>diverted</option></select></div>
+        <div class="col-6"><label class="form-label small">Last reported station (code)</label><input class="form-control form-control-sm text-uppercase" name="last_reported_station_code" maxlength="10"></div>
+        <div class="col-6"><label class="form-label small">Delay (min)</label><input type="number" class="form-control form-control-sm" name="delay_minutes" min="-120" max="3000"></div>
+        <div class="col-12"><label class="form-label small">Observed on</label><input class="form-control form-control-sm" name="observed_on" placeholder="e.g. NTES app, station announcement" maxlength="80"></div>
+        <div class="col-12"><button class="btn btn-sm btn-outline-primary">Save manual status</button></div>
+      </form>
+    </div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

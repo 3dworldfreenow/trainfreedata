@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% from "partials/macros.html" import chart, status, fresh, pcode with context %}
+{% block title %}Saved PNR monitor{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-2"><h1 class="h3 mb-0">Saved PNR monitor</h1><a href="{{ url_for('views.pnr_enquiry') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus"></i> Add PNR</a></div>
+{% if not automated %}<div class="alert alert-info small"><i class="bi bi-info-circle"></i> No permitted automated PNR source is enabled, so scheduled checks are skipped. Open a PNR to get the official enquiry link and record what you see; every change is stored with a timestamp.</div>{% endif %}
+<input class="form-control form-control-sm mb-2" placeholder="Filter…" data-filter="#pnrs">
+<div class="table-responsive"><table class="table table-sm table-hover table-sortable" id="pnrs">
+  <thead><tr><th data-sort>PNR</th><th data-sort>Label</th><th data-sort>Train</th><th data-sort>Journey</th><th>Passengers (current)</th><th data-sort>Chart</th><th data-sort>Last check</th><th data-sort>Next check</th><th>Monitoring</th></tr></thead>
+  <tbody>{% for p in rows %}
+    <tr><td><a class="mono" href="{{ url_for('views.pnr_detail', pnr_id=p.id) }}">******{{ p.pnr_last4 }}</a></td><td>{{ p.label or '' }}</td><td>{{ p.train_number or '—' }} {{ p.train_name or '' }}</td><td data-value="{{ p.journey_date or '' }}">{{ p.journey_date or '—' }}</td>
+      <td>{% for x in p.passengers %}{{ pcode(x.current_code) }} {% else %}<span class="small text-body-secondary">not yet recorded</span>{% endfor %}</td>
+      <td>{{ chart(p.chart_status) }}</td><td>{{ fresh(p.last_checked_at) }} {% if p.last_check_result %}{{ status(p.last_check_result) }}{% endif %}</td>
+      <td class="small">{{ p.next_check_at|ist if p.next_check_at else '—' }}</td><td>{% if p.monitoring_enabled %}<span class="badge text-bg-success">on</span>{% else %}<span class="badge text-bg-secondary">off</span>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="9" class="text-body-secondary">No saved PNRs.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

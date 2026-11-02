@@ -1,0 +1,79 @@
+{% extends "base.html" %}{% from "partials/macros.html" import kind, chart, pcode, status, fresh, manual_box, csrf with context %}
+{% block title %}PNR ******{{ p.pnr_last4 }}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-1">PNR <span class="mono">******{{ p.pnr_last4 }}</span> {% if p.label %}<small class="text-body-secondary">{{ p.label }}</small>{% endif %}</h1>
+    <div class="text-body-secondary">{{ p.train_number or 'Train ?' }} {{ p.train_name or '' }} · Journey {{ p.journey_date or '?' }} · Boarding {{ p.boarding_station_code or '?' }}{% if p.travel_class %} · {{ p.travel_class }}{% endif %}
+      {% if p.scheduled_departure_at %}· Scheduled dep {{ p.scheduled_departure_at|ist }} {{ kind('static') }}{% endif %}</div>
+    <div class="mt-1">{{ chart(p.chart_status) }} {% if p.chart_status_changed_at %}<span class="small">since {{ p.chart_status_changed_at|ist }} ({{ p.chart_status_source }})</span>{% endif %}</div>
+  </div>
+  <div class="d-flex gap-2">
+    <form method="post" action="{{ url_for('views.pnr_check', pnr_id=p.id) }}">{{ csrf() }}<button class="btn btn-primary"><i class="bi bi-arrow-repeat"></i> Check now</button></form>
+    <form method="post" action="{{ url_for('views.pnr_delete', pnr_id=p.id) }}" data-confirm="Permanently delete this PNR and all of its stored history?">{{ csrf() }}<button class="btn btn-outline-danger"><i class="bi bi-trash"></i> Delete</button></form>
+  </div>
+</div>
+{{ manual_box(manual, 'Check this PNR on the official site, then record the result below') }}
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-header">Current passenger status</div>
+      <div class="table-responsive"><table class="table table-sm mb-0">
+        <thead><tr><th>#</th><th>Booking status</th><th>Current status</th><th>Coach/berth</th><th>Booking → current</th></tr></thead>
+        <tbody>{% for x in p.passengers %}
+          <tr><td>{{ x.serial }}</td><td>{{ pcode(x.booking_code) }} {{ x.booking_status or '—' }}</td><td>{{ pcode(x.current_code) }} {{ x.current_status or '—' }}</td><td>{{ x.coach or '' }} {{ x.berth or '' }}</td><td class="small">{{ progress(x) }}</td></tr>
+        {% else %}<tr><td colspan="5" class="text-body-secondary">No status recorded yet.</td></tr>{% endfor %}</tbody>
+      </table></div>
+      <div class="card-footer small">Last check: {{ fresh(p.last_checked_at) }} {% if p.last_check_result %}{{ status(p.last_check_result) }}{% endif %} · Checks: {{ p.check_count }} · Next status check: {{ p.next_check_at|ist if p.next_check_at else '—' }} · Next chart check: {{ p.next_chart_check_at|ist if p.next_chart_check_at else '—' }}</div>
+    </div>
+
+    <div class="card mb-3"><div class="card-header">Status history</div>
+      <div class="table-responsive"><table class="table table-sm mb-0">
+        <thead><tr><th>Checked</th><th>Data</th><th>Chart</th><th>Passengers</th><th>Change</th></tr></thead>
+        <tbody>{% for h in history %}
+          <tr class="{% if h.row.changed %}table-warning{% endif %}"><td class="small">{{ h.row.checked_at|ist }}</td><td>{{ kind(h.row.data_kind) }}</td><td>{{ chart(h.row.chart_status) }}</td>
+            <td class="small">{% for x in h.passengers %}P{{ x.serial }}: {{ x.current_status or '—' }}{% if not loop.last %}, {% endif %}{% endfor %}</td><td class="small">{{ h.row.change_summary or ('first snapshot' if loop.last else 'no change') }}</td></tr>
+        {% else %}<tr><td colspan="5" class="text-body-secondary">No snapshots yet.</td></tr>{% endfor %}</tbody>
+      </table></div>
+    </div>
+
+    <div class="card"><div class="card-header">Chart status changes</div>
+      <ul class="list-group list-group-flush">{% for c in p.chart_history %}
+        <li class="list-group-item small">{{ c.observed_at|ist }} — {{ chart(c.previous_status) }} → {{ chart(c.chart_status) }} {{ kind(c.data_kind) }}</li>
+      {% else %}<li class="list-group-item small text-body-secondary">No chart status reported yet. Chart status is never inferred from the journey date.</li>{% endfor %}</ul>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card mb-3"><div class="card-header">Record status from official enquiry {{ kind('manual') }}</div><div class="card-body">
+      <form method="post" action="{{ url_for('views.pnr_manual', pnr_id=p.id) }}">{{ csrf() }}
+        <div class="row g-2 mb-2">
+          <div class="col-6"><input class="form-control form-control-sm" name="train_number" placeholder="Train no." value="{{ p.train_number or '' }}"></div>
+          <div class="col-6"><input type="date" class="form-control form-control-sm" name="journey_date" value="{{ p.journey_date or '' }}"></div>
+          <div class="col-6"><input class="form-control form-control-sm text-uppercase" name="boarding_station_code" placeholder="Boarding stn" value="{{ p.boarding_station_code or '' }}"></div>
+          <div class="col-6"><input class="form-control form-control-sm text-uppercase" name="travel_class" placeholder="Class e.g. SL, 3A" value="{{ p.travel_class or '' }}"></div>
+        </div>
+        <table class="table table-sm"><thead><tr><th>#</th><th>Booking status</th><th>Current status</th></tr></thead><tbody>
+        {% set existing = {} %}{% for x in p.passengers %}{% set _ = existing.update({x.serial: x}) %}{% endfor %}
+        {% for i in range(1, 7) %}{% set x = existing.get(i) %}
+          <tr><td>{{ i }}</td><td><input class="form-control form-control-sm" name="p{{ i }}_booking" placeholder="e.g. WL/23" value="{{ x.booking_status if x else '' }}"></td><td><input class="form-control form-control-sm" name="p{{ i }}_current" placeholder="e.g. RAC/5 or CNF/S5/32" value="{{ x.current_status if x else '' }}"></td></tr>
+        {% endfor %}</tbody></table>
+        <div class="mb-2"><label class="form-label small">Chart status shown on the official page</label>
+          <select class="form-select form-select-sm" name="chart_status"><option value="">Not shown / unsure (leave unchanged)</option><option value="not_prepared">Chart not prepared</option><option value="prepared">Chart prepared</option></select></div>
+        <button class="btn btn-sm btn-primary">Save snapshot</button>
+      </form>
+    </div></div>
+
+    <div class="card"><div class="card-header">Monitoring settings</div><div class="card-body">
+      <form method="post" action="{{ url_for('views.pnr_settings', pnr_id=p.id) }}" class="row g-2">{{ csrf() }}
+        <div class="col-12 form-check form-switch ms-2"><input class="form-check-input" type="checkbox" name="monitoring_enabled" value="1" id="mon" {% if p.monitoring_enabled %}checked{% endif %}><label for="mon" class="form-check-label">Periodic monitoring enabled</label></div>
+        <div class="col-6"><label class="form-label small">Label</label><input class="form-control form-control-sm" name="label" value="{{ p.label or '' }}" maxlength="64"></div>
+        <div class="col-6"><label class="form-label small">Fixed interval (min, blank = adaptive)</label><input type="number" class="form-control form-control-sm" name="check_interval_minutes" min="{{ config.PNR_MIN_CHECK_INTERVAL_MINUTES }}" value="{{ p.check_interval_minutes or '' }}"></div>
+        <div class="col-6"><label class="form-label small">Journey date</label><input type="date" class="form-control form-control-sm" name="journey_date" value="{{ p.journey_date or '' }}"></div>
+        <div class="col-6"><label class="form-label small">Boarding station</label><input class="form-control form-control-sm text-uppercase" name="boarding_station_code" value="{{ p.boarding_station_code or '' }}"></div>
+        <div class="col-12"><button class="btn btn-sm btn-outline-primary">Save settings</button></div>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,4 @@
+date,train_number,type,train_name,from_station_code,to_station_code,affected_from_code,affected_to_code,rescheduled_departure,rescheduled_by_minutes,diverted_route,reason
+2026-11-02,12002,cancelled,Bhopal Shatabdi,NDLS,RKMP,,,,,,Example row - replace with an official notice
+2026-11-02,12951,rescheduled,Mumbai Rajdhani,MMCT,NDLS,,,2026-11-02T19:40:00,180,,Example row
+2026-11-02,12627,diverted,Karnataka Express,SBC,NDLS,,,,,"via ET-NGP-BPQ",Example row

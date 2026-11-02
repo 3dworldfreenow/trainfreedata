@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% from "partials/macros.html" import kind, fresh with context %}
+{% block title %}Delayed trains{% endblock %}
+{% block content %}
+<h1 class="h3">Delayed trains</h1>
+{% if not automated %}<div class="alert alert-info small"><i class="bi bi-info-circle"></i> No source with permitted automated access provides running status, so this list contains only MANUAL entries recorded by users. It is not a complete picture of delays across India.</div>{% endif %}
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-2"><label class="form-label small">Journey date</label><input type="date" class="form-control" name="date" value="{{ jd.isoformat() }}"></div>
+  <div class="col-md-2"><label class="form-label small">Min delay (min)</label><input type="number" class="form-control" name="min" value="{{ threshold }}" min="0"></div>
+  <div class="col-md-1 d-flex align-items-end"><button class="btn btn-primary w-100">Show</button></div>
+</form>
+<input class="form-control form-control-sm mb-2" placeholder="Filter…" data-filter="#delayed">
+<div class="table-responsive"><table class="table table-sm table-striped table-sortable" id="delayed">
+  <thead><tr><th data-sort>Train</th><th data-sort>Name</th><th data-sort>Delay (min)</th><th data-sort>Status</th><th data-sort>Last reported</th><th>Data</th><th data-sort>Updated</th></tr></thead>
+  <tbody>{% for r in rows %}
+    <tr><td><a class="mono" href="{{ url_for('views.train_detail', number=r.train_number) }}">{{ r.train_number }}</a></td><td>{{ names.get(r.train_number, '') }}</td><td data-value="{{ r.delay_minutes }}"><span class="badge text-bg-danger">{{ r.delay_minutes }}</span></td><td>{{ r.running_status or '' }}</td><td>{{ r.last_reported_station_code or '—' }}</td><td>{{ kind(r.data_kind) }}</td><td data-value="{{ r.last_confirmed_at }}">{{ fresh(r.last_confirmed_at) }}</td></tr>
+  {% else %}<tr><td colspan="7" class="text-body-secondary">No delayed trains in recorded data for this date.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

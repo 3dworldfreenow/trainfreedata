@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% from "partials/macros.html" import pager with context %}
+{% block title %}Stations{% endblock %}
+{% block content %}
+<h1 class="h3">Stations</h1>
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-4"><input class="form-control" name="q" value="{{ request.args.q or '' }}" placeholder="Station code or name"></div>
+  <div class="col-md-2"><select class="form-select" name="monitored"><option value="">All</option><option value="1" {% if request.args.monitored == '1' %}selected{% endif %}>Monitored only</option></select></div>
+  <div class="col-md-1"><button class="btn btn-primary w-100">Search</button></div>
+</form>
+<div class="d-flex justify-content-between"><div class="small text-body-secondary">{{ '{:,}'.format(total) }} stations</div>{{ pager(page, pages) }}</div>
+<div class="table-responsive"><table class="table table-sm table-hover table-sortable">
+  <thead><tr><th data-sort>Code</th><th data-sort>Name</th><th data-sort>State</th><th data-sort>Zone</th><th>Monitored</th></tr></thead>
+  <tbody>{% for s in rows %}
+    <tr><td><a class="mono" href="{{ url_for('views.station_board', code=s.code) }}">{{ s.code }}</a></td><td>{{ s.name }}</td><td>{{ s.state or '—' }}</td><td>{{ s.zone or '—' }}</td><td>{% if s.is_monitored %}<i class="bi bi-eye text-primary"></i>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="5" class="text-body-secondary">No stations found.</td></tr>{% endfor %}</tbody>
+</table></div>
+{{ pager(page, pages) }}
+{% endblock %}

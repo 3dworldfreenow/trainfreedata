@@ -1,0 +1,14 @@
+.kind-live { background: #198754; color: #fff; }
+.kind-cached { background: #0d6efd; color: #fff; }
+.kind-static { background: #6c757d; color: #fff; }
+.kind-manual { background: #fd7e14; color: #fff; }
+.stat-card .value { font-size: 1.8rem; font-weight: 600; line-height: 1.1; }
+.stat-card .label { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--bs-secondary-color); }
+.table-sortable th[data-sort] { cursor: pointer; user-select: none; white-space: nowrap; }
+.table-sortable th[data-sort]::after { content: " \2195"; opacity: .35; }
+.table-sortable th.sorted-asc::after { content: " \2191"; opacity: 1; }
+.table-sortable th.sorted-desc::after { content: " \2193"; opacity: 1; }
+.mono { font-family: var(--bs-font-monospace); }
+.log-context { max-width: 40ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+td, th { vertical-align: middle; }
+.table tr.passthru > td { color: var(--bs-tertiary-color); font-size: .85em; }

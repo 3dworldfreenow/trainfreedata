@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% from "partials/macros.html" import kind, chart with context %}
+{% block title %}Chart preparation monitor{% endblock %}
+{% block content %}
+<h1 class="h3">Chart preparation monitor</h1>
+<div class="alert alert-secondary small"><i class="bi bi-shield-check"></i> Chart status is shown <strong>only</strong> when a source (or you, from an official channel) reports it. It is never assumed from the journey date or scheduled departure; those are used only to check more often as departure approaches.
+{% if not automated %}<br><strong>No permitted automated chart source is enabled</strong> — record chart status from the official PNR page on each PNR's page.{% endif %}</div>
+<div class="table-responsive mb-4"><table class="table table-sm table-hover table-sortable">
+  <thead><tr><th data-sort>PNR</th><th data-sort>Train</th><th data-sort>Journey</th><th data-sort>Scheduled dep (static)</th><th data-sort>Chart status</th><th data-sort>Status since</th><th data-sort>Next chart check</th></tr></thead>
+  <tbody>{% for p in rows %}
+    {% set hrs = ((p.scheduled_departure_at - now).total_seconds() / 3600) if p.scheduled_departure_at else none %}
+    <tr class="{% if hrs is not none and 0 < hrs < 6 and p.chart_status != 'prepared' %}table-warning{% endif %}">
+      <td><a class="mono" href="{{ url_for('views.pnr_detail', pnr_id=p.id) }}">******{{ p.pnr_last4 }}</a></td><td>{{ p.train_number or '—' }}</td><td>{{ p.journey_date or '—' }}</td>
+      <td data-value="{{ p.scheduled_departure_at or '' }}">{% if p.scheduled_departure_at %}{{ p.scheduled_departure_at|ist }}{% if hrs is not none and hrs > 0 %} <span class="small text-body-secondary">(in {{ '%.1f'|format(hrs) }} h)</span>{% endif %}{% else %}—{% endif %}</td>
+      <td>{{ chart(p.chart_status) }}</td><td class="small">{{ p.chart_status_changed_at|ist if p.chart_status_changed_at else '—' }}</td><td class="small">{{ p.next_chart_check_at|ist if p.next_chart_check_at else '—' }}</td></tr>
+  {% else %}<tr><td colspan="7" class="text-body-secondary">No saved PNRs.</td></tr>{% endfor %}</tbody>
+</table></div>
+<h2 class="h5">Chart status change log</h2>
+<div class="table-responsive"><table class="table table-sm table-sortable">
+  <thead><tr><th data-sort>Observed</th><th data-sort>PNR</th><th>From</th><th>To</th><th>Data</th></tr></thead>
+  <tbody>{% for ev, p in events %}
+    <tr><td data-value="{{ ev.observed_at }}">{{ ev.observed_at|ist }}</td><td class="mono">******{{ p.pnr_last4 }}</td><td>{{ chart(ev.previous_status) }}</td><td>{{ chart(ev.chart_status) }}</td><td>{{ kind(ev.data_kind) }}</td></tr>
+  {% else %}<tr><td colspan="5" class="text-body-secondary">No chart status changes recorded.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

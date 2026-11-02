@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% from "partials/macros.html" import status, fresh, csrf with context %}
+{% block title %}Source health{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><h1 class="h3 mb-0">Source health</h1>
+  {% if g.user and g.user.role == 'admin' %}<form method="post" action="{{ url_for('views.sources_probe') }}">{{ csrf() }}<button class="btn btn-sm btn-outline-primary"><i class="bi bi-activity"></i> Probe now</button></form>{% endif %}</div>
+<p class="small text-body-secondary"><strong>manual only</strong> = the official service is reachable but offers no permitted automated access (no API / CAPTCHA), so the system links users to it instead of scraping it.</p>
+<div class="row g-3 mb-4">
+{% for s in summary %}{% set src = s.source %}
+  <div class="col-md-6 col-xl-4"><div class="card h-100 {% if not src.enabled %}opacity-75{% endif %}"><div class="card-body">
+    <div class="d-flex justify-content-between"><h2 class="h6 mb-1">{{ src.name }}</h2>{{ status(src.last_status if src.enabled else 'disabled') }}</div>
+    <div class="small mb-2"><code>{{ src.key }}</code> · adapter <code>{{ src.adapter }}</code> · automated access: <strong>{{ src.automated_access|replace('_',' ') }}</strong></div>
+    <div class="small mb-2">Capabilities: {% for c in s.capabilities %}<span class="badge text-bg-light border">{{ c }}</span> {% else %}none{% endfor %}</div>
+    <div class="small">Last success: {{ fresh(src.last_success_at) }} · Last failure: {{ src.last_failure_at|ist if src.last_failure_at else '—' }}</div>
+    <div class="small">24 h availability: {{ (s.availability_pct ~ '%') if s.availability_pct is not none else 'no checks' }} ({{ s.checks }} checks) · Rate limit {{ src.rate_limit_per_minute }}/min</div>
+    {% if src.last_error %}<div class="small text-danger mt-1 text-break">Last error: {{ src.last_error }}</div>{% endif %}
+    {% if src.notes %}<div class="small text-body-secondary mt-2">{{ src.notes }}</div>{% endif %}
+    {% if src.documentation_url %}<a class="small" href="{{ src.documentation_url }}" target="_blank" rel="noopener noreferrer">documentation</a>{% endif %}
+  </div></div></div>
+{% endfor %}
+</div>
+<h2 class="h5">Recent checks</h2>
+<div class="table-responsive"><table class="table table-sm table-sortable">
+  <thead><tr><th data-sort>Time</th><th data-sort>Source</th><th data-sort>Type</th><th data-sort>Capability</th><th data-sort>Status</th><th data-sort>HTTP</th><th data-sort>Latency ms</th><th>Error</th></tr></thead>
+  <tbody>{% for h in recent %}<tr><td data-value="{{ h.checked_at }}">{{ h.checked_at|ist }}</td><td>{{ h.source.key }}</td><td>{{ h.check_type }}</td><td>{{ h.capability or '' }}</td><td>{{ status(h.status) }}</td><td>{{ h.http_status or '' }}</td><td>{{ h.latency_ms or '' }}</td><td class="small text-break">{{ h.error or '' }}</td></tr>
+  {% else %}<tr><td colspan="8" class="text-body-secondary">No checks recorded yet.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

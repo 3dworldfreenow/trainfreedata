@@ -1,0 +1,39 @@
+{% extends "base.html" %}{% from "partials/macros.html" import csrf with context %}
+{% block title %}Daily reports{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h1 class="h3 mb-0">Daily railway intelligence — {{ d.strftime('%d %b %Y') }}</h1>
+  <div class="d-flex gap-2">
+    <form method="get" class="d-flex gap-1"><input type="date" name="date" class="form-control form-control-sm" value="{{ d.isoformat() }}"><button class="btn btn-sm btn-primary">Go</button></form>
+    {% if g.user and g.user.role == 'admin' %}<form method="post" action="{{ url_for('views.reports_generate') }}">{{ csrf() }}<input type="hidden" name="date" value="{{ d.isoformat() }}"><button class="btn btn-sm btn-outline-secondary">Save snapshot</button></form>{% endif %}
+  </div>
+</div>
+<p class="small text-body-secondary">Figures below are computed from data actually recorded by this system (live, cached or manual). Stored snapshot: {{ stored.generated_at|ist if stored else 'none yet' }}.</p>
+<div class="row g-3 mb-3">
+  {% for label, value in [
+      ('Disruptions recorded', summary.disruptions_total),
+      ('Cancelled', summary.disruptions.get('cancelled', 0)),
+      ('Rescheduled', summary.disruptions.get('rescheduled', 0)),
+      ('Diverted', summary.disruptions.get('diverted', 0)),
+      ('Trains with status data', summary.trains_with_status),
+      ('Delayed ≥ ' ~ summary.delay_threshold_minutes ~ ' min', summary.delayed_count),
+      ('Average delay (min)', summary.avg_delay_minutes if summary.avg_delay_minutes is not none else '—'),
+      ('Max delay (min)', summary.max_delay_minutes if summary.max_delay_minutes is not none else '—'),
+      ('PNR checks', summary.pnr_checks),
+      ('PNR status changes', summary.pnr_changes),
+      ('Chart updates', summary.chart_updates)] %}
+  <div class="col-6 col-md-3 col-xl-2"><div class="card stat-card h-100"><div class="card-body"><div class="label">{{ label }}</div><div class="value">{{ value }}</div></div></div></div>
+  {% endfor %}
+</div>
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card"><div class="card-header">Worst delays</div>
+    <table class="table table-sm mb-0"><thead><tr><th>Train</th><th>Delay</th><th>Data</th></tr></thead><tbody>
+    {% for w in summary.worst_delays %}<tr><td><a href="{{ url_for('views.train_detail', number=w.train_number) }}">{{ w.train_number }}</a></td><td>{{ w.delay_minutes }} min</td><td>{{ w.data_kind }}</td></tr>
+    {% else %}<tr><td colspan="3" class="text-body-secondary">No delay data recorded.</td></tr>{% endfor %}</tbody></table></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">Saved daily summaries (history)</div>
+    <input class="form-control form-control-sm" placeholder="Filter…" data-filter="#hist">
+    <table class="table table-sm table-sortable mb-0" id="hist"><thead><tr><th data-sort>Date</th><th data-sort>Disruptions</th><th data-sort>Delayed</th><th data-sort>PNR checks</th></tr></thead><tbody>
+    {% for r in recent %}<tr><td><a href="?date={{ r.report_date.isoformat() }}">{{ r.report_date }}</a></td><td>{{ r.summary.disruptions_total }}</td><td>{{ r.summary.delayed_count }}</td><td>{{ r.summary.pnr_checks }}</td></tr>
+    {% else %}<tr><td colspan="4" class="text-body-secondary">No saved summaries yet (the daily_summary job saves one each night).</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}

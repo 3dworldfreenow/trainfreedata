@@ -1,0 +1,76 @@
+{% extends "base.html" %}{% from "partials/macros.html" import status, fresh, kind, chart with context %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <h1 class="h3 mb-0">Indian Railway Monitoring — Overview</h1>
+  <div class="small">Redis: {{ status('up' if stats.redis_ok else 'down') }} · Last live update: {{ fresh(stats.last_live_update) }} · Last successful job: {{ fresh(stats.last_job_success) }}</div>
+</div>
+
+{% set missing = [] %}{% for cap, ok in automated.items() %}{% if not ok %}{% set _ = missing.append(cap) %}{% endif %}{% endfor %}
+{% if missing %}
+<div class="alert alert-info small">
+  <i class="bi bi-info-circle"></i> No enabled source currently offers <strong>permitted automated access</strong> for:
+  {{ missing|join(', ')|replace('_', ' ') }}. These features work in manual-enquiry mode (official links + recording what you see) until such a source is configured.
+  See <a href="{{ url_for('views.sources') }}">Source health</a> and <code>docs/DATA_SOURCES.md</code>.
+</div>
+{% endif %}
+
+<div class="row g-3 mb-3">
+  {% set cards = [
+    ('Trains in master data', stats.trains_total, 'views.trains', 'static timetable'),
+    ('Trains monitored', stats.trains_monitored, 'views.trains', 'marked for live polling'),
+    ('Live statuses today', stats.live_today, 'views.delayed', stats.live_fresh ~ ' fresh'),
+    ('Delayed trains today', stats.delayed_today, 'views.delayed', '≥ ' ~ config.DELAY_THRESHOLD_MINUTES ~ ' min'),
+    ('Disruptions today', stats.disruptions_today, 'views.disruptions', 'cancelled/rescheduled/diverted'),
+    ('PNR checks today', stats.pnr_checks_today, 'views.pnr_list', stats.pnrs_saved ~ ' PNRs saved'),
+    ('Chart updates today', stats.chart_updates_today, 'views.charts', 'status changes recorded'),
+    ('Stations', stats.stations_total, 'views.stations', stats.stations_monitored ~ ' monitored'),
+  ] %}
+  {% for label, value, ep, sub in cards %}
+  <div class="col-6 col-md-4 col-xl-3">
+    <a href="{{ url_for(ep) }}" class="text-decoration-none"><div class="card stat-card h-100"><div class="card-body">
+      <div class="label">{{ label }}</div><div class="value">{{ '{:,}'.format(value) }}</div><div class="small text-body-secondary">{{ sub }}</div>
+    </div></div></a>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-header d-flex justify-content-between"><span>Source availability</span><a href="{{ url_for('views.sources') }}" class="small">details</a></div>
+      <div class="table-responsive"><table class="table table-sm mb-0">
+        <thead><tr><th>Source</th><th>Status</th><th>Automated access</th><th>Last success</th></tr></thead>
+        <tbody>
+        {% for s in stats.sources %}
+          <tr class="{% if not s.enabled %}text-body-secondary{% endif %}">
+            <td>{{ s.name }}</td><td>{{ status(s.last_status if s.enabled else 'disabled') }}</td>
+            <td><span class="small">{{ s.automated_access|replace('_',' ') }}</span></td><td>{{ fresh(s.last_success_at) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody></table></div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-header d-flex justify-content-between"><span>Monitoring jobs</span>{% if g.user and g.user.role == 'admin' %}<a href="{{ url_for('views.settings') }}" class="small">manage</a>{% endif %}</div>
+      <div class="table-responsive"><table class="table table-sm mb-0">
+        <thead><tr><th>Job</th><th>State</th><th>Last run</th><th>Message</th></tr></thead>
+        <tbody>
+        {% for j in jobs %}
+          <tr><td>{{ j.name }}</td><td>{{ status(j.last_status if j.enabled else 'paused') }}</td><td>{{ fresh(j.last_finished_at) }}</td>
+              <td class="small text-truncate" style="max-width: 22rem" title="{{ j.last_message or '' }}">{{ j.last_message or '' }}</td></tr>
+        {% else %}<tr><td colspan="4" class="text-body-secondary">No jobs configured. Run <code>flask railmon init-db</code>.</td></tr>{% endfor %}
+        </tbody></table></div>
+    </div>
+  </div>
+  {% if recent_changes %}
+  <div class="col-12">
+    <div class="card"><div class="card-header">Your recent chart status changes</div>
+      <ul class="list-group list-group-flush">
+      {% for ev, p in recent_changes %}
+        <li class="list-group-item small"><a href="{{ url_for('views.pnr_detail', pnr_id=p.id) }}">PNR ******{{ p.pnr_last4 }}</a> — {{ chart(ev.previous_status) }} → {{ chart(ev.chart_status) }} {{ kind(ev.data_kind) }} at {{ ev.observed_at|ist }}</li>
+      {% endfor %}
+      </ul></div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

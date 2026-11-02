@@ -1,0 +1,23 @@
+[Unit]
+Description=RailMon web dashboard and internal REST API (gunicorn)
+After=network-online.target mysql.service redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=railmon
+Group=railmon
+WorkingDirectory=/opt/railmon/app
+EnvironmentFile=/opt/railmon/app/.env
+ExecStart=/opt/railmon/venv/bin/gunicorn -c deploy/gunicorn.conf.py railmon.wsgi:app
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/railmon/app/data
+
+[Install]
+WantedBy=multi-user.target
