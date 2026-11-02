@@ -24,6 +24,17 @@ def _int(name: str, default: int) -> int:
         return default
 
 
+def _db_url() -> str:
+    url = os.getenv("DATABASE_URL", "mysql+pymysql://railmon:railmon@127.0.0.1:3306/railmon?charset=utf8mb4")
+    # Make relative SQLite paths (sqlite:///data/x.sqlite) relative to the project root.
+    prefix = "sqlite:///"
+    if url.startswith(prefix) and not url.startswith(prefix + "/") and url != "sqlite://":
+        path = BASE_DIR / url[len(prefix):]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        url = prefix + str(path)
+    return url
+
+
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "")
     # Fernet key (urlsafe base64, 32 bytes) used to encrypt PNR numbers and snapshots.
@@ -31,9 +42,7 @@ class Config:
     # Separate key for the HMAC lookup hash of PNR numbers.
     PNR_HASH_KEY = os.getenv("PNR_HASH_KEY", "")
 
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        "DATABASE_URL", "mysql+pymysql://railmon:railmon@127.0.0.1:3306/railmon?charset=utf8mb4"
-    )
+    SQLALCHEMY_DATABASE_URI = _db_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,

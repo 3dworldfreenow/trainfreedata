@@ -48,11 +48,25 @@ docs/               DATA_SOURCES, INSTALL, ARCHITECTURE, API, TESTING
 tests/              pytest suite (no network, no MySQL/Redis needed)
 ```
 
-## Quick start (development)
+## Quick start (development, with uv)
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+```bash
+uv venv --python 3.12 .venv
+```
+
+```bash
+uv pip install --python .venv -r requirements-dev.txt
+```
+
+(Or simply `uv sync`, which uses `pyproject.toml` / `uv.lock`, and prefix commands with `uv run`.)
 
 ```bash
 .venv/bin/python -m pytest -q
@@ -62,8 +76,10 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 cp .env.example .env && .venv/bin/python -m railmon.genkeys
 ```
 
-Paste the keys into `.env`, point `DATABASE_URL` at MySQL (or
-`sqlite:///data/dev.sqlite` for a quick local try), then:
+Paste the keys into `.env`. For a quick local try set
+`DATABASE_URL=sqlite:///data/railmon.sqlite` (relative to the project root);
+use MySQL in production. Redis is optional for a local try (the app degrades
+gracefully without it). Then:
 
 ```bash
 .venv/bin/flask --app railmon.wsgi railmon init-db
@@ -81,9 +97,13 @@ Paste the keys into `.env`, point `DATABASE_URL` at MySQL (or
 .venv/bin/flask --app railmon.wsgi run
 ```
 
+In a second terminal, the scheduler worker:
+
 ```bash
 .venv/bin/python -m railmon.scheduler
 ```
+
+Open http://127.0.0.1:5000 and log in.
 
 Production install on Ubuntu 24.04: **[docs/INSTALL.md](docs/INSTALL.md)**.
 

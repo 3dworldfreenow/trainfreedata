@@ -8,3 +8,4 @@ data/*.sqlite*
 instance/
 .pytest_cache/
 *.log
+data/datameet/
