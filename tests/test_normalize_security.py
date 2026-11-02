@@ -66,3 +66,15 @@ def test_pnr_helpers():
     assert normalize_pnr("12345678901") is None
     assert mask_pnr("7890") == "******7890"
     assert content_hash({"a": 1, "b": 2}) == content_hash({"b": 2, "a": 1})
+
+
+def test_encryption_key_without_padding_accepted():
+    from flask import Flask
+
+    from railmon.security import Crypto
+
+    app = Flask(__name__)
+    app.config.update(DATA_ENCRYPTION_KEY="Zm9yLXRlc3RzLW9ubHktMzItYnl0ZXMta2V5LTAwMDA", PNR_HASH_KEY="k")
+    c = Crypto()
+    c.init_app(app)
+    assert c.decrypt(c.encrypt("1234567890")) == "1234567890"

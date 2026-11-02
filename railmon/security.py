@@ -29,6 +29,8 @@ class Crypto:
         hkey = app.config.get("PNR_HASH_KEY", "")
         if not key or not hkey:
             raise RuntimeError("DATA_ENCRYPTION_KEY and PNR_HASH_KEY must be set (see .env.example)")
+        key = key.strip().strip('"').strip("'")
+        key += "=" * (-len(key) % 4)  # tolerate keys whose '=' padding was lost (e.g. by shell parsing)
         try:
             raw = base64.urlsafe_b64decode(key)
             if len(raw) != 32:
