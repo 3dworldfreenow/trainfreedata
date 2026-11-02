@@ -67,6 +67,9 @@ def register_web(app) -> None:
             return "Daily"
         return " ".join(n for n, f in zip(names, mask) if f == "1")
 
+    def zip_days(mask):
+        return list(zip(["M", "T", "W", "T", "F", "S", "S"], [c == "1" for c in (mask or "0000000")]))
+
     @app.context_processor
     def inject_globals():
-        return {"stale_after": app.config["STALE_AFTER_MINUTES"], "age_minutes": age_minutes}
+        return {"stale_after": app.config["STALE_AFTER_MINUTES"], "age_minutes": age_minutes, "zip_days": zip_days}

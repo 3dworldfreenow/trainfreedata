@@ -3,7 +3,7 @@
 {% block content %}
 <h1 class="h3">Stations</h1>
 <form class="row g-2 mb-3" method="get">
-  <div class="col-md-4"><input class="form-control" name="q" value="{{ request.args.q or '' }}" placeholder="Station code or name"></div>
+  <div class="col-md-4"><div class="rm-ac-host"><input class="form-control" name="q" value="{{ request.args.q or '' }}" placeholder="Station code or name" data-ac="station" data-ac-fill="code"></div></div>
   <div class="col-md-2"><select class="form-select" name="monitored"><option value="">All</option><option value="1" {% if request.args.monitored == '1' %}selected{% endif %}>Monitored only</option></select></div>
   <div class="col-md-1"><button class="btn btn-primary w-100">Search</button></div>
 </form>

@@ -13,8 +13,9 @@ PUBLIC = ["/", "/trains", "/stations", "/delayed", "/disruptions", "/disruptions
 
 def test_public_pages(client, datameet_dir):
     import_dir(datameet_dir, echo=lambda *_: None)
-    for url in PUBLIC + ["/trains/12002", "/trains/12002?check=1", "/stations/AGC", "/trains?from=NDLS&to=BPL"]:
+    for url in PUBLIC + ["/dashboard", "/trains/12002", "/trains/12002?check=1", "/stations/AGC", "/search?from=NDLS&to=BPL"]:
         assert client.get(url).status_code == 200, url
+    assert client.get("/trains?from=NDLS&to=BPL").status_code == 302
 
 
 def test_train_check_shows_manual_link_not_fake_data(client, datameet_dir):

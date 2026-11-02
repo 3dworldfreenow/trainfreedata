@@ -33,11 +33,11 @@
   <div class="col-lg-7"><div class="card"><div class="card-header">Record a disruption from an official notice {{ kind('manual') }}</div><div class="card-body">
     <form method="post" action="{{ url_for('views.disruption_manual') }}" class="row g-2">{{ csrf() }}
       <div class="col-md-3"><input type="date" class="form-control form-control-sm" name="journey_date" required></div>
-      <div class="col-md-3"><input class="form-control form-control-sm" name="train_number" placeholder="Train no." required maxlength="10"></div>
+      <div class="col-md-3 rm-ac-host"><input class="form-control form-control-sm" name="train_number" placeholder="Train no." required data-ac="train" data-ac-fill="code"></div>
       <div class="col-md-3"><select class="form-select form-select-sm" name="disruption_type">{% for t in types %}<option value="{{ t }}" {% if t == dtype %}selected{% endif %}>{{ t|replace('_',' ') }}</option>{% endfor %}</select></div>
       <div class="col-md-3"><input class="form-control form-control-sm" name="reason" placeholder="Reason" maxlength="255"></div>
-      <div class="col-md-3"><input class="form-control form-control-sm text-uppercase" name="affected_from_code" placeholder="Affected from"></div>
-      <div class="col-md-3"><input class="form-control form-control-sm text-uppercase" name="affected_to_code" placeholder="Affected to"></div>
+      <div class="col-md-3 rm-ac-host"><input class="form-control form-control-sm" name="affected_from_code" placeholder="Affected from" data-ac="station" data-ac-fill="code"></div>
+      <div class="col-md-3 rm-ac-host"><input class="form-control form-control-sm" name="affected_to_code" placeholder="Affected to" data-ac="station" data-ac-fill="code"></div>
       <div class="col-md-3"><input class="form-control form-control-sm" name="rescheduled_by_minutes" type="number" placeholder="Rescheduled by (min)"></div>
       <div class="col-md-3"><input class="form-control form-control-sm" name="diverted_route" placeholder="Diverted via"></div>
       <div class="col-12"><button class="btn btn-sm btn-outline-primary">Save</button></div>

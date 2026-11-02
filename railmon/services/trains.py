@@ -55,9 +55,36 @@ def trains_between(from_code: str, to_code: str, limit: int = 200) -> list[dict]
         .all()
     )
     return [
-        {"train": t, "departure": ra.departure_time, "dep_day": ra.day_offset, "arrival": rb.arrival_time, "arr_day": rb.day_offset}
+        {"train": t, "departure": ra.departure_time, "dep_day": ra.day_offset, "arrival": rb.arrival_time,
+         "arr_day": rb.day_offset, "duration_minutes": journey_minutes(ra.departure_time, ra.day_offset, rb.arrival_time, rb.day_offset)}
         for t, ra, rb in rows
     ]
+
+
+def _mins(t: str | None) -> int | None:
+    try:
+        h, m, *_ = t.split(":")
+        return int(h) * 60 + int(m)
+    except (AttributeError, ValueError):
+        return None
+
+
+def journey_minutes(dep: str | None, dep_day: int | None, arr: str | None, arr_day: int | None) -> int | None:
+    """Timetable journey time between two stops (uses day offsets; None if unknown)."""
+    d, a = _mins(dep), _mins(arr)
+    if d is None or a is None:
+        return None
+    total = a - d + 1440 * ((arr_day or 1) - (dep_day or 1))
+    if total < 0:  # day offsets missing/inconsistent: assume next day
+        total += 1440
+    return total
+
+
+def runs_on(running_days: str | None, weekday: int) -> bool | None:
+    """True/False if running days are known (Mon=0), None if unknown."""
+    if not running_days or len(running_days) != 7:
+        return None
+    return running_days[weekday] == "1"
 
 
 def train_types() -> list[str]:

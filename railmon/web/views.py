@@ -59,8 +59,71 @@ def _manual_source_id() -> int | None:
     return disruption_svc.manual_source_id()
 
 
-# ------------------------------------------------------------------ 1. overview
+# ------------------------------------------------------------------ home & search
 @views_bp.route("/")
+@public_page
+def home():
+    from ..services.suggest import display_name
+
+    popular = [("NDLS", "BCT"), ("HWH", "NDLS"), ("SBC", "MAS"), ("CSMT", "PUNE"), ("SC", "SBC")]
+    names = dict(db.session.query(Station.code, Station.name).filter(Station.code.in_({c for p in popular for c in p})).all())
+    popular = [(a, b, display_name(names.get(a, a)), display_name(names.get(b, b))) for a, b in popular if a in names and b in names]
+    return render_template("pages/home.html", today=today_ist(), popular=popular, tab=request.args.get("tab", "route"))
+
+
+@views_bp.route("/search")
+@public_page
+def search():
+    from ..services.suggest import display_name, resolve_station
+
+    frm, to = resolve_station(request.args.get("from")), resolve_station(request.args.get("to"))
+    jd = _date_arg("date", today_ist())
+    errors = []
+    if not frm:
+        errors.append(f"Could not find the 'From' station \"{request.args.get('from', '')}\".")
+    if not to:
+        errors.append(f"Could not find the 'To' station \"{request.args.get('to', '')}\".")
+    if frm and to and frm.code == to.code:
+        errors.append("'From' and 'To' are the same station.")
+    results = []
+    if not errors:
+        for r in train_svc.trains_between(frm.code, to.code, limit=300):
+            r["runs"] = train_svc.runs_on(r["train"].running_days, jd.weekday())
+            results.append(r)
+        results = [r for r in results if r["runs"] is not False]
+    return render_template(
+        "pages/search.html", frm=frm, to=to, jd=jd, results=results, errors=errors,
+        frm_name=display_name(frm.name) if frm else "", to_name=display_name(to.name) if to else "",
+        types=sorted({r["train"].train_type for r in results if r["train"].train_type}),
+    )
+
+
+@views_bp.route("/go/train")
+@public_page
+def go_train():
+    from ..services.suggest import resolve_train
+
+    number = resolve_train(request.args.get("q"))
+    if not number:
+        flash(f"No train found for \"{request.args.get('q', '')}\". Try the train number.", "warning")
+        return redirect(url_for("views.home", tab="train"))
+    return redirect(url_for("views.train_detail", number=number, check=request.args.get("check") or None))
+
+
+@views_bp.route("/go/station")
+@public_page
+def go_station():
+    from ..services.suggest import resolve_station
+
+    st = resolve_station(request.args.get("q"))
+    if not st:
+        flash(f"No station found for \"{request.args.get('q', '')}\".", "warning")
+        return redirect(url_for("views.home", tab="station"))
+    return redirect(url_for("views.station_board", code=st.code))
+
+
+# ------------------------------------------------------------------ 1. overview (monitoring dashboard)
+@views_bp.route("/dashboard")
 @public_page
 def overview():
     stats = report_svc.overview_stats()
@@ -85,17 +148,20 @@ def overview():
 def trains():
     per_page = 50
     q, station, ttype = request.args.get("q", ""), request.args.get("station", ""), request.args.get("type", "")
+    if request.args.get("from") and request.args.get("to"):
+        return redirect(url_for("views.search", **{"from": request.args["from"], "to": request.args["to"]}))
+    if station:
+        from ..services.suggest import resolve_station
+
+        st = resolve_station(station)
+        station = st.code if st else station
     sort, direction = request.args.get("sort", "number"), request.args.get("dir", "asc")
     monitored = {"1": True, "0": False}.get(request.args.get("monitored", ""))
     rows, total = train_svc.search_trains(q, station, ttype, monitored, sort, direction, _page(), per_page)
     status = train_svc.latest_status_for([t.id for t in rows])
-    between = []
-    frm, to = request.args.get("from", "").strip().upper(), request.args.get("to", "").strip().upper()
-    if frm and to:
-        between = train_svc.trains_between(frm, to)
     return render_template(
         "pages/trains.html", rows=rows, total=total, page=_page(), pages=_pages(total, per_page), status=status,
-        types=train_svc.train_types(), between=between, frm=frm, to=to,
+        types=train_svc.train_types(),
         automated=bool(manager.automated_sources("train_status")),
     )
 

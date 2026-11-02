@@ -70,7 +70,7 @@
       <form method="post" action="{{ url_for('views.train_manual_status', number=train.number) }}" class="row g-2">{{ csrf() }}
         <div class="col-6"><label class="form-label small">Journey date</label><input type="date" class="form-control form-control-sm" name="journey_date" value="{{ today.isoformat() }}" required></div>
         <div class="col-6"><label class="form-label small">Status</label><select class="form-select form-select-sm" name="running_status"><option>running</option><option>not_started</option><option>arrived</option><option>cancelled</option><option>rescheduled</option><option>diverted</option></select></div>
-        <div class="col-6"><label class="form-label small">Last reported station (code)</label><input class="form-control form-control-sm text-uppercase" name="last_reported_station_code" maxlength="10"></div>
+        <div class="col-6 rm-ac-host"><label class="form-label small">Last reported station</label><input class="form-control form-control-sm" name="last_reported_station_code" data-ac="station" data-ac-fill="code"></div>
         <div class="col-6"><label class="form-label small">Delay (min)</label><input type="number" class="form-control form-control-sm" name="delay_minutes" min="-120" max="3000"></div>
         <div class="col-12"><label class="form-label small">Observed on</label><input class="form-control form-control-sm" name="observed_on" placeholder="e.g. NTES app, station announcement" maxlength="80"></div>
         <div class="col-12"><button class="btn btn-sm btn-outline-primary">Save manual status</button></div>

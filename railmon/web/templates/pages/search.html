@@ -1,0 +1,95 @@
+{% extends "base.html" %}{% from "partials/macros.html" import kind with context %}
+{% block title %}{% if frm and to %}{{ frm.code }} → {{ to.code }}{% else %}Search{% endif %}{% endblock %}
+{% block content %}
+<form class="rm-route rm-route-compact mb-3" method="get" action="{{ url_for('views.search') }}" autocomplete="off">
+  <div class="rm-field rm-from"><label for="from">From</label>
+    <input id="from" name="from" data-ac="station" value="{{ (frm_name ~ ' (' ~ frm.code ~ ')') if frm else request.args.get('from', '') }}" required></div>
+  <button type="button" class="rm-swap" data-swap="#from,#to" title="Swap stations" aria-label="Swap stations"><i class="bi bi-arrow-left-right"></i></button>
+  <div class="rm-field rm-to"><label for="to">To</label>
+    <input id="to" name="to" data-ac="station" value="{{ (to_name ~ ' (' ~ to.code ~ ')') if to else request.args.get('to', '') }}" required></div>
+  <div class="rm-field rm-date"><label for="date">Date</label><input id="date" type="date" name="date" value="{{ jd.isoformat() }}"></div>
+  <button class="rm-go" type="submit"><i class="bi bi-search"></i><span> Search</span></button>
+</form>
+
+{% for e in errors %}<div class="alert alert-warning rm-alert">{{ e }} Try the station code (e.g. NDLS) or pick from the suggestions.</div>{% endfor %}
+
+{% if not errors %}
+<div class="rm-results-head">
+  <div>
+    <h1 class="h5 mb-0">{{ frm_name }} <i class="bi bi-arrow-right text-secondary"></i> {{ to_name }}</h1>
+    <div class="text-secondary small">{{ jd.strftime('%a, %d %b %Y') }} · <span id="rcount">{{ results|length }}</span> trains · timetable {{ kind('static') }}</div>
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-center {% if not results %}d-none{% endif %}">
+    <select class="form-select form-select-sm rm-select" id="sortby" aria-label="Sort">
+      <option value="dep">Departure (earliest)</option>
+      <option value="dur">Duration (fastest)</option>
+      <option value="arr">Arrival (earliest)</option>
+    </select>
+  </div>
+</div>
+
+{% if results %}
+<div class="rm-filters">
+  <span class="rm-filter-label">Depart</span>
+  {% for key, label in [('0', 'Early 0–6'), ('1', 'Morning 6–12'), ('2', 'Afternoon 12–18'), ('3', 'Night 18–24')] %}
+  <button type="button" class="rm-chip rm-toggle" data-filter-slot="{{ key }}">{{ label }}</button>
+  {% endfor %}
+  {% if types|length > 1 %}<span class="rm-filter-label ms-2">Type</span>
+  {% for t in types %}<button type="button" class="rm-chip rm-toggle" data-filter-type="{{ t }}">{{ t }}</button>{% endfor %}{% endif %}
+</div>
+
+<div class="alert rm-info small">
+  <i class="bi bi-info-circle"></i> Times are from the open timetable (STATIC, c. 2016) and may have changed.
+  {% if results|selectattr('runs', 'none')|list %}Running days aren't in the open data, so trains are listed for every date — confirm on the official site before travelling.{% endif %}
+</div>
+
+<div id="results">
+{% for r in results %}{% set t = r.train %}
+  {% set dep_h = (r.departure or '00:00')[:2]|int %}
+  <article class="rm-train" data-dep="{{ r.departure or '' }}" data-dur="{{ r.duration_minutes or 99999 }}"
+           data-arr="{{ ((r.arr_day or 1) - 1) * 1440 + ((r.arrival or '00:00')[:2]|int) * 60 + ((r.arrival or '00:00')[3:5]|int) }}"
+           data-slot="{{ dep_h // 6 }}" data-type="{{ t.train_type or '' }}">
+    <div class="rm-train-top">
+      <a class="rm-train-name" href="{{ url_for('views.train_detail', number=t.number) }}"><span class="rm-num">{{ t.number }}</span> {{ t.name }}</a>
+      <div class="rm-days">
+        {% if t.running_days %}
+          {% for d, f in zip_days(t.running_days) %}<span class="{{ 'on' if f else '' }}">{{ d }}</span>{% endfor %}
+        {% else %}<span class="rm-muted">Running days unknown</span>{% endif %}
+      </div>
+    </div>
+    <div class="rm-timeline">
+      <div class="rm-stop">
+        <div class="rm-time">{{ r.departure|hhmm }}</div>
+        <div class="rm-code">{{ frm.code }}</div>
+      </div>
+      <div class="rm-line">
+        <span>{% if r.duration_minutes is not none %}{{ r.duration_minutes // 60 }}h {{ '%02d'|format(r.duration_minutes % 60) }}m{% else %}—{% endif %}</span>
+      </div>
+      <div class="rm-stop text-end">
+        <div class="rm-time">{{ r.arrival|hhmm }}{% if r.arr_day and r.dep_day and r.arr_day > r.dep_day %}<sup>+{{ r.arr_day - r.dep_day }}</sup>{% endif %}</div>
+        <div class="rm-code">{{ to.code }}</div>
+      </div>
+    </div>
+    <div class="rm-train-bottom">
+      <div class="rm-classes">
+        {% if t.train_type %}<span class="rm-tag">{{ t.train_type }}</span>{% endif %}
+        {% for c in (t.classes or []) %}<span class="rm-class">{{ c }}</span>{% endfor %}
+      </div>
+      <div class="rm-actions">
+        <a href="{{ url_for('views.train_detail', number=t.number) }}">Timetable</a>
+        <a href="{{ url_for('views.train_detail', number=t.number, check=1) }}">Running status <i class="bi bi-arrow-right"></i></a>
+      </div>
+    </div>
+  </article>
+{% endfor %}
+</div>
+<p id="noresults" class="rm-empty d-none">No trains match these filters.</p>
+{% else %}
+<div class="rm-empty">
+  <i class="bi bi-signpost"></i>
+  <p>No direct trains between these stations in the open timetable.</p>
+  <p class="small text-secondary">Try a nearby major station, or check the <a href="https://enquiry.indianrail.gov.in/mntes/" target="_blank" rel="noopener noreferrer">official enquiry</a>.</p>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -12,8 +12,8 @@
         <div class="row g-2 mb-2">
           <div class="col-6"><input class="form-control form-control-sm" name="label" placeholder="Label (optional)" maxlength="64"></div>
           <div class="col-6"><input type="date" class="form-control form-control-sm" name="journey_date" title="Journey (boarding) date"></div>
-          <div class="col-6"><input class="form-control form-control-sm" name="train_number" placeholder="Train no. (optional)" maxlength="10"></div>
-          <div class="col-6"><input class="form-control form-control-sm text-uppercase" name="boarding_station_code" placeholder="Boarding stn code" maxlength="10"></div>
+          <div class="col-6"><div class="rm-ac-host"><input class="form-control form-control-sm" name="train_number" placeholder="Train (optional)" data-ac="train" data-ac-fill="code"></div></div>
+          <div class="col-6"><div class="rm-ac-host"><input class="form-control form-control-sm" name="boarding_station_code" placeholder="Boarding station" data-ac="station" data-ac-fill="code"></div></div>
         </div>
         <div class="form-text mb-2">Journey date / train / boarding station are optional; they let the monitor pace checks as departure approaches (never to assume chart status).</div>
         <button class="btn btn-primary">Check status</button>

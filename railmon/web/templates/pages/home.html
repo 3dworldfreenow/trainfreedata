@@ -1,0 +1,93 @@
+{% extends "base.html" %}{% from "partials/macros.html" import csrf with context %}
+{% block title %}Search trains{% endblock %}
+{% block body_class %}rm-home{% endblock %}
+{% block main_class %}container-xl{% endblock %}
+{% block content %}
+<section class="rm-hero">
+  <h1>Where to next?</h1>
+  <p class="rm-sub">Trains between stations, timetables, PNR and chart status — from free, official and open data.</p>
+
+  <div class="rm-searchcard">
+    <ul class="nav rm-tabs" role="tablist">
+      <li><button class="rm-tab {% if tab == 'route' %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#t-route" type="button"><i class="bi bi-signpost-split"></i> Trains between stations</button></li>
+      <li><button class="rm-tab {% if tab == 'train' %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#t-train" type="button"><i class="bi bi-train-front"></i> Train status</button></li>
+      <li><button class="rm-tab {% if tab == 'pnr' %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#t-pnr" type="button"><i class="bi bi-ticket-perforated"></i> PNR status</button></li>
+      <li><button class="rm-tab {% if tab == 'station' %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#t-station" type="button"><i class="bi bi-geo-alt"></i> Live station</button></li>
+    </ul>
+    <div class="tab-content">
+      <div class="tab-pane fade {% if tab == 'route' %}show active{% endif %}" id="t-route">
+        <form class="rm-route" method="get" action="{{ url_for('views.search') }}" autocomplete="off">
+          <div class="rm-field rm-from">
+            <label for="from">From</label>
+            <input id="from" name="from" data-ac="station" placeholder="Station name or code" required>
+          </div>
+          <button type="button" class="rm-swap" data-swap="#from,#to" title="Swap stations" aria-label="Swap stations"><i class="bi bi-arrow-left-right"></i></button>
+          <div class="rm-field rm-to">
+            <label for="to">To</label>
+            <input id="to" name="to" data-ac="station" placeholder="Station name or code" required>
+          </div>
+          <div class="rm-field rm-date">
+            <label for="date">Date</label>
+            <input id="date" type="date" name="date" value="{{ today.isoformat() }}" min="{{ today.isoformat() }}">
+          </div>
+          <button class="rm-go" type="submit"><i class="bi bi-search"></i><span> Search</span></button>
+        </form>
+        <div class="rm-chips">
+          <button type="button" class="rm-chip" data-date-offset="0">Today</button>
+          <button type="button" class="rm-chip" data-date-offset="1">Tomorrow</button>
+          <button type="button" class="rm-chip" data-date-offset="2">Day after</button>
+        </div>
+      </div>
+
+      <div class="tab-pane fade {% if tab == 'train' %}show active{% endif %}" id="t-train">
+        <form class="rm-single" method="get" action="{{ url_for('views.go_train') }}" autocomplete="off">
+          <div class="rm-field flex-grow-1">
+            <label for="trainq">Train</label>
+            <input id="trainq" name="q" data-ac="train" placeholder="Train number or name, e.g. 12951 or Rajdhani" required>
+          </div>
+          <input type="hidden" name="check" value="1">
+          <button class="rm-go" type="submit"><i class="bi bi-arrow-right"></i><span> Check</span></button>
+        </form>
+      </div>
+
+      <div class="tab-pane fade {% if tab == 'pnr' %}show active{% endif %}" id="t-pnr">
+        <form class="rm-single" method="post" action="{{ url_for('views.pnr_enquiry') }}" autocomplete="off">{{ csrf() }}
+          <div class="rm-field flex-grow-1">
+            <label for="pnr">PNR number</label>
+            <input id="pnr" name="pnr" inputmode="numeric" pattern="\d{10}" maxlength="10" placeholder="10-digit PNR" required>
+          </div>
+          <input type="hidden" name="save" value="1">
+          <button class="rm-go" type="submit"><i class="bi bi-arrow-right"></i><span> Check</span></button>
+        </form>
+        <p class="rm-note">{% if not g.user %}Log in to check and track PNRs. {% endif %}Your PNR is encrypted and only the last 4 digits are shown.</p>
+      </div>
+
+      <div class="tab-pane fade {% if tab == 'station' %}show active{% endif %}" id="t-station">
+        <form class="rm-single" method="get" action="{{ url_for('views.go_station') }}" autocomplete="off">
+          <div class="rm-field flex-grow-1">
+            <label for="stq">Station</label>
+            <input id="stq" name="q" data-ac="station" placeholder="Station name or code" required>
+          </div>
+          <button class="rm-go" type="submit"><i class="bi bi-arrow-right"></i><span> Open</span></button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {% if popular %}
+  <div class="rm-popular">
+    <span>Popular:</span>
+    {% for a, b, an, bn in popular %}
+      <a class="rm-chip" href="{{ url_for('views.search', **{'from': a, 'to': b, 'date': today.isoformat()}) }}">{{ an }} <i class="bi bi-arrow-right"></i> {{ bn }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+
+<section class="rm-features">
+  <a class="rm-feature" href="{{ url_for('views.pnr_list') }}"><i class="bi bi-bell"></i><div><b>Track PNRs</b><span>History of every status change, waitlist to confirmed</span></div></a>
+  <a class="rm-feature" href="{{ url_for('views.charts') }}"><i class="bi bi-clipboard-check"></i><div><b>Chart preparation</b><span>Timestamped, never guessed</span></div></a>
+  <a class="rm-feature" href="{{ url_for('views.disruptions') }}"><i class="bi bi-exclamation-triangle"></i><div><b>Disruptions</b><span>Cancelled, rescheduled and diverted trains</span></div></a>
+  <a class="rm-feature" href="{{ url_for('views.overview') }}"><i class="bi bi-speedometer2"></i><div><b>Monitoring</b><span>Source health, freshness and jobs</span></div></a>
+</section>
+{% endblock %}

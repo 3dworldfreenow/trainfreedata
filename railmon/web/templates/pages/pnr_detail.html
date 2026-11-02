@@ -48,9 +48,9 @@
     <div class="card mb-3"><div class="card-header">Record status from official enquiry {{ kind('manual') }}</div><div class="card-body">
       <form method="post" action="{{ url_for('views.pnr_manual', pnr_id=p.id) }}">{{ csrf() }}
         <div class="row g-2 mb-2">
-          <div class="col-6"><input class="form-control form-control-sm" name="train_number" placeholder="Train no." value="{{ p.train_number or '' }}"></div>
+          <div class="col-6 rm-ac-host"><input class="form-control form-control-sm" name="train_number" placeholder="Train no." value="{{ p.train_number or '' }}" data-ac="train" data-ac-fill="code"></div>
           <div class="col-6"><input type="date" class="form-control form-control-sm" name="journey_date" value="{{ p.journey_date or '' }}"></div>
-          <div class="col-6"><input class="form-control form-control-sm text-uppercase" name="boarding_station_code" placeholder="Boarding stn" value="{{ p.boarding_station_code or '' }}"></div>
+          <div class="col-6 rm-ac-host"><input class="form-control form-control-sm" name="boarding_station_code" placeholder="Boarding station" value="{{ p.boarding_station_code or '' }}" data-ac="station" data-ac-fill="code"></div>
           <div class="col-6"><input class="form-control form-control-sm text-uppercase" name="travel_class" placeholder="Class e.g. SL, 3A" value="{{ p.travel_class or '' }}"></div>
         </div>
         <table class="table table-sm"><thead><tr><th>#</th><th>Booking status</th><th>Current status</th></tr></thead><tbody>
@@ -70,7 +70,7 @@
         <div class="col-6"><label class="form-label small">Label</label><input class="form-control form-control-sm" name="label" value="{{ p.label or '' }}" maxlength="64"></div>
         <div class="col-6"><label class="form-label small">Fixed interval (min, blank = adaptive)</label><input type="number" class="form-control form-control-sm" name="check_interval_minutes" min="{{ config.PNR_MIN_CHECK_INTERVAL_MINUTES }}" value="{{ p.check_interval_minutes or '' }}"></div>
         <div class="col-6"><label class="form-label small">Journey date</label><input type="date" class="form-control form-control-sm" name="journey_date" value="{{ p.journey_date or '' }}"></div>
-        <div class="col-6"><label class="form-label small">Boarding station</label><input class="form-control form-control-sm text-uppercase" name="boarding_station_code" value="{{ p.boarding_station_code or '' }}"></div>
+        <div class="col-6 rm-ac-host"><label class="form-label small">Boarding station</label><input class="form-control form-control-sm" name="boarding_station_code" value="{{ p.boarding_station_code or '' }}" data-ac="station" data-ac-fill="code"></div>
         <div class="col-12"><button class="btn btn-sm btn-outline-primary">Save settings</button></div>
       </form>
     </div></div>

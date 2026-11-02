@@ -108,6 +108,27 @@ def stats():
     return jsonify(s)
 
 
+# ---------------------------------------------------------------- autocomplete
+@api_bp.get("/suggest/stations")
+@public_page
+def suggest_stations():
+    from ..services.suggest import suggest_stations as _s
+
+    resp = jsonify({"items": _s(request.args.get("q", ""), min(int(request.args.get("limit", 8)), 20))})
+    resp.headers["Cache-Control"] = "public, max-age=300"
+    return resp
+
+
+@api_bp.get("/suggest/trains")
+@public_page
+def suggest_trains():
+    from ..services.suggest import suggest_trains as _s
+
+    resp = jsonify({"items": _s(request.args.get("q", ""), min(int(request.args.get("limit", 8)), 20))})
+    resp.headers["Cache-Control"] = "public, max-age=300"
+    return resp
+
+
 # ---------------------------------------------------------------- trains
 @api_bp.get("/trains")
 @public_page

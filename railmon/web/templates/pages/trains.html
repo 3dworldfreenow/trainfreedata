@@ -6,30 +6,14 @@
 <div class="alert alert-info small"><i class="bi bi-info-circle"></i> Live running status: no source with permitted automated access is enabled, so the "Latest status" column only shows MANUAL entries (or nothing). Train master data below is the STATIC open timetable.</div>
 {% endif %}
 <form class="row g-2 mb-3" method="get">
-  <div class="col-md-3"><input class="form-control" name="q" value="{{ request.args.q or '' }}" placeholder="Train number or name"></div>
-  <div class="col-md-2"><input class="form-control text-uppercase" name="station" value="{{ request.args.station or '' }}" placeholder="Stops at station (code)"></div>
+  <div class="col-md-3"><div class="rm-ac-host"><input class="form-control" name="q" value="{{ request.args.q or '' }}" placeholder="Train number or name" data-ac="train" data-ac-fill="code"></div></div>
+  <div class="col-md-2"><div class="rm-ac-host"><input class="form-control" name="station" value="{{ request.args.station or '' }}" placeholder="Stops at station" data-ac="station" data-ac-fill="code"></div></div>
   <div class="col-md-2"><select class="form-select" name="type"><option value="">All types</option>{% for t in types %}<option {% if request.args.type == t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
   <div class="col-md-2"><select class="form-select" name="monitored"><option value="">Monitored + not</option><option value="1" {% if request.args.monitored == '1' %}selected{% endif %}>Monitored only</option><option value="0" {% if request.args.monitored == '0' %}selected{% endif %}>Not monitored</option></select></div>
   <div class="col-md-1"><button class="btn btn-primary w-100">Search</button></div>
 </form>
 
-<details class="mb-3" {% if frm %}open{% endif %}>
-  <summary class="fw-semibold">Route search (trains between two stations — static timetable)</summary>
-  <form class="row g-2 mt-1" method="get">
-    <div class="col-md-2"><input class="form-control text-uppercase" name="from" value="{{ frm }}" placeholder="From code e.g. NDLS"></div>
-    <div class="col-md-2"><input class="form-control text-uppercase" name="to" value="{{ to }}" placeholder="To code e.g. BCT"></div>
-    <div class="col-md-1"><button class="btn btn-outline-primary w-100">Find</button></div>
-  </form>
-  {% if frm and to %}
-  <div class="table-responsive mt-2"><table class="table table-sm table-striped table-sortable" id="between">
-    <thead><tr><th data-sort>Train</th><th data-sort>Name</th><th data-sort>Dep {{ frm }}</th><th data-sort>Arr {{ to }}</th><th>Running days</th><th>Data</th></tr></thead>
-    <tbody>{% for r in between %}
-      <tr><td><a href="{{ url_for('views.train_detail', number=r.train.number) }}">{{ r.train.number }}</a></td><td>{{ r.train.name }}</td>
-      <td>{{ r.departure|hhmm }} (day {{ r.dep_day or '?' }})</td><td>{{ r.arrival|hhmm }} (day {{ r.arr_day or '?' }})</td><td>{{ r.train.running_days|days }}</td><td>{{ kind('static') }}</td></tr>
-    {% else %}<tr><td colspan="6" class="text-body-secondary">No direct trains found in the static timetable.</td></tr>{% endfor %}</tbody>
-  </table></div>
-  {% endif %}
-</details>
+<p class="small text-secondary mb-3"><i class="bi bi-signpost-split"></i> Looking for trains between two stations? Use <a href="{{ url_for('views.home') }}">Search</a>.</p>
 
 <div class="d-flex justify-content-between align-items-center"><div class="small text-body-secondary">{{ '{:,}'.format(total) }} trains</div>{{ pager(page, pages) }}</div>
 <div class="table-responsive"><table class="table table-sm table-hover align-middle">

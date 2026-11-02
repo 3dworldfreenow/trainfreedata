@@ -120,7 +120,7 @@ def login():
             db.session.commit()
             log_event("INFO", "auth", "login", user=user.username)
             nxt = request.args.get("next") or ""
-            return redirect(nxt if nxt.startswith("/") and not nxt.startswith("//") else url_for("views.overview"))
+            return redirect(nxt if nxt.startswith("/") and not nxt.startswith("//") else url_for("views.home"))
         log_event("WARNING", "auth", "failed login", username=request.form.get("username", "")[:64], ip=ip)
         flash("Invalid username or password", "danger")
     return render_template("pages/login.html")
@@ -129,4 +129,4 @@ def login():
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
     session.clear()
-    return redirect(url_for("views.overview"))
+    return redirect(url_for("views.home"))

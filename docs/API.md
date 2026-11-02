@@ -17,6 +17,8 @@ Source-backed endpoints return the normalised envelope described in
 |---|---|---|---|
 | GET | `/health` | none | DB/Redis liveness (503 if DB down) |
 | GET | `/stats` | public | Dashboard counters, source status, freshness |
+| GET | `/suggest/stations?q=nd` | public | Station autocomplete (≥ 2 chars; code or name; ranked) |
+| GET | `/suggest/trains?q=129` | public | Train autocomplete (number prefix or name) |
 | GET | `/trains?q=&station=&type=&sort=&dir=&page=&per_page=` | public | Search master data (+ latest stored status) |
 | GET | `/trains/between?from=NDLS&to=BCT` | public | Route search on the static timetable |
 | GET | `/trains/{number}` | public | Train, static schedule envelope, latest status |

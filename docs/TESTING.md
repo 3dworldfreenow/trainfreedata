@@ -13,7 +13,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 .venv/bin/python -m pytest -q
 ```
 
-What is covered (62 tests):
+What is covered (73 tests):
 
 | Area | File | Examples |
 |---|---|---|
