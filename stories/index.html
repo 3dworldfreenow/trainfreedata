@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cut">
+<title>Picture Story Box</title>
+<style>
+  :root {
+    --bg: #fff8ec; --ink: #3b2a1a; --muted: #8a7560; --card: #ffffff;
+    --accent: #ff7a3d; --accent2: #2bb3a3; --curtain: #b3202f; --curtain2: #7d1420;
+    --shadow: 0 6px 18px rgba(80, 50, 20, .15);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: "Baloo 2", "Comic Sans MS", "Segoe UI", system-ui, sans-serif;
+    overscroll-behavior: none;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; border: 0; }
+  .hidden { display: none !important; }
+
+  /* ---------- Home ---------- */
+  #home { max-width: 760px; margin: 0 auto; padding: 20px 16px 48px; }
+  #home h1 { font-size: clamp(28px, 7vw, 44px); margin: 8px 0 2px; text-align: center; }
+  #home .sub { text-align: center; color: var(--muted); margin: 0 0 22px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--card); border-radius: 22px; box-shadow: var(--shadow);
+    padding: 14px; text-align: left; display: flex; flex-direction: column; gap: 8px;
+    transition: transform .15s;
+  }
+  .card:active { transform: scale(.97); }
+  .card .thumb {
+    height: 120px; border-radius: 16px; display: flex; align-items: center; justify-content: center;
+    font-size: 54px; overflow: hidden; background-size: cover; background-position: center;
+  }
+  .card b { font-size: 20px; }
+  .card small { color: var(--muted); }
+  .card.make .thumb { background: repeating-linear-gradient(45deg, #ffe3c9, #ffe3c9 12px, #fff1e2 12px, #fff1e2 24px); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .pill {
+    background: var(--card); border-radius: 999px; padding: 8px 14px; box-shadow: var(--shadow); font-size: 16px;
+  }
+  .pill.on { background: var(--accent); color: #fff; }
+  .settings { justify-content: center; margin-bottom: 18px; }
+  h2 { margin: 28px 0 12px; font-size: 22px; }
+  .del { margin-left: auto; background: none; color: var(--muted); font-size: 14px; padding: 0; }
+
+  /* ---------- Maker ---------- */
+  #maker { max-width: 760px; margin: 0 auto; padding: 16px 16px 120px; }
+  #maker input[type=text], #maker textarea {
+    width: 100%; font: inherit; font-size: 17px; padding: 10px 12px; border-radius: 14px;
+    border: 2px solid #f0dcc4; background: #fff; color: var(--ink);
+  }
+  #maker textarea { min-height: 70px; resize: vertical; }
+  .drop {
+    display: block; border: 3px dashed #f3b98f; border-radius: 22px; padding: 26px 12px; text-align: center;
+    background: #fff3e6; margin: 14px 0; font-size: 18px; cursor: pointer;
+  }
+  .drop input { display: none; }
+  .page { display: grid; grid-template-columns: 110px 1fr; gap: 12px; background: #fff; border-radius: 18px; padding: 10px; box-shadow: var(--shadow); margin-bottom: 12px; }
+  .page img { width: 110px; height: 110px; object-fit: cover; border-radius: 12px; }
+  .page .tools { display: flex; gap: 6px; margin-top: 6px; }
+  .page .tools button { background: #fff1e2; border-radius: 10px; padding: 4px 10px; }
+  .bar {
+    position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(255, 248, 236, .95); display: flex; gap: 10px; justify-content: center; box-shadow: 0 -4px 14px rgba(0,0,0,.08);
+  }
+  .big { background: var(--accent); color: #fff; border-radius: 999px; padding: 12px 22px; font-size: 18px; box-shadow: var(--shadow); }
+  .big.alt { background: var(--accent2); }
+  .big.ghost { background: #fff; color: var(--ink); }
+
+  /* ---------- Player ---------- */
+  #player { position: fixed; inset: 0; overflow: hidden; background: #000; user-select: none; }
+  #stage { position: absolute; inset: 0; transition: background 1s; }
+  .sky { position: absolute; inset: 0; }
+  .actor {
+    position: absolute; transform: translate(-50%, -50%); line-height: 1;
+    transition: left 1.6s ease-in-out, top 1.6s ease-in-out, font-size .6s, opacity .6s;
+    filter: drop-shadow(0 6px 6px rgba(0,0,0,.25));
+  }
+  .photo {
+    position: absolute; inset: 0; background-size: cover; background-position: center;
+    animation: kenburns 9s ease-in-out forwards;
+  }
+  .photo.fit { background-size: contain; background-repeat: no-repeat; animation-name: kenburns-soft; }
+  @keyframes kenburns { from { transform: scale(1.02) translate(0,0); } to { transform: scale(1.14) translate(-2%, -2%); } }
+  @keyframes kenburns-soft { from { transform: scale(1); } to { transform: scale(1.06); } }
+  .bob { animation: bob 1.4s ease-in-out infinite; }
+  .walk { animation: walk .5s ease-in-out infinite; }
+  .fly { animation: fly 1.2s ease-in-out infinite; }
+  .spin { animation: spin 3s linear infinite; }
+  .pulse { animation: pulse 1s ease-in-out infinite; }
+  .zzz { animation: zzz 2s ease-out infinite; }
+  .shake { animation: shake .4s ease-in-out 3; }
+  @keyframes bob { 50% { transform: translate(-50%, -58%); } }
+  @keyframes walk { 0%,100% { transform: translate(-50%,-50%) rotate(-4deg); } 50% { transform: translate(-50%,-54%) rotate(4deg); } }
+  @keyframes fly { 50% { transform: translate(-50%, -70%) rotate(-6deg); } }
+  @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+  @keyframes pulse { 50% { transform: translate(-50%,-50%) scale(1.15); } }
+  @keyframes zzz { 0% { opacity: 0; transform: translate(-50%,-30%); } 40% { opacity: 1; } 100% { opacity: 0; transform: translate(-10%,-150%); } }
+  @keyframes shake { 25% { transform: translate(-54%,-50%); } 75% { transform: translate(-46%,-50%); } }
+  .tapme { cursor: pointer; }
+  .tapme::after {
+    content: "👆"; position: absolute; font-size: .35em; right: -10%; bottom: -15%;
+    animation: pulse 1s infinite; transform: none;
+  }
+
+  .water { position: absolute; background: linear-gradient(#7fd3ff, #2b8fd6); border-radius: 6px 6px 40% 40%; box-shadow: 0 0 0 3px rgba(255,255,255,.5); transition: height .8s ease; }
+
+  #caption {
+    position: absolute; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+    width: min(92%, 700px); background: rgba(255, 255, 255, .92); color: var(--ink);
+    padding: 14px 18px; border-radius: 20px; font-size: clamp(18px, 4.6vw, 26px); line-height: 1.35;
+    text-align: center; box-shadow: var(--shadow); min-height: 1.5em;
+  }
+  #caption .hint { display: block; font-size: .6em; color: var(--muted); margin-top: 4px; }
+  #hud {
+    position: absolute; top: 0; left: 0; right: 0; display: flex; gap: 8px; align-items: center;
+    padding: calc(10px + env(safe-area-inset-top)) 12px 10px; z-index: 5;
+  }
+  #hud .pill { padding: 6px 12px; }
+  #hud .grow { flex: 1; }
+  #progress { height: 10px; background: rgba(255,255,255,.6); border-radius: 99px; overflow: hidden; }
+  #progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .5s; }
+  #counter { min-width: 64px; text-align: center; }
+
+  /* Curtain */
+  #curtain { position: absolute; inset: 0; z-index: 10; display: flex; cursor: pointer; }
+  #curtain .half {
+    flex: 1; background: repeating-linear-gradient(90deg, var(--curtain) 0 28px, var(--curtain2) 28px 40px);
+    transition: transform 1.3s cubic-bezier(.7,0,.3,1); box-shadow: inset 0 -30px 40px rgba(0,0,0,.3);
+  }
+  #curtain.open .half:first-child { transform: translateX(-100%); }
+  #curtain.open .half:last-child { transform: translateX(100%); }
+  #curtain .label {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center;
+    color: #fff; background: rgba(0,0,0,.35); padding: 18px 26px; border-radius: 24px; transition: opacity .4s;
+  }
+  #curtain .label b { display: block; font-size: clamp(26px, 7vw, 42px); }
+  #curtain.open .label { opacity: 0; }
+
+  #theend {
+    position: absolute; inset: 0; z-index: 8; display: flex; flex-direction: column; gap: 16px;
+    align-items: center; justify-content: center; background: rgba(255, 248, 236, .9); text-align: center; padding: 16px;
+  }
+  #theend h2 { font-size: clamp(38px, 10vw, 64px); margin: 0; }
+  #theend .moral { font-size: 20px; max-width: 520px; }
+  .confetti { position: absolute; top: -40px; font-size: 26px; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(110vh) rotate(540deg); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= HOME ================= -->
+<section id="home">
+  <h1>📚 Picture Story Box</h1>
+  <p class="sub">Tap a story — or make your own from pictures!</p>
+  <div class="row settings">
+    <button class="pill" data-lang="en">English</button>
+    <button class="pill" data-lang="hi">हिंदी</button>
+    <button class="pill" id="voiceBtn">🔊 Voice on</button>
+  </div>
+  <div class="grid" id="builtins"></div>
+  <h2>🖼️ My picture stories</h2>
+  <div class="grid" id="mine"></div>
+</section>
+
+<!-- ================= MAKER ================= -->
+<section id="maker" class="hidden">
+  <div class="row"><button class="pill" id="makerBack">🏠 Home</button></div>
+  <h2>✏️ Make a story from pictures</h2>
+  <input type="text" id="mkTitle" placeholder="Story name — e.g. Our trip to the zoo" maxlength="60">
+  <label class="drop">📷 Tap to add pictures<br><small>(from camera or gallery — add as many as you like)</small>
+    <input type="file" id="mkFiles" accept="image/*" multiple>
+  </label>
+  <div id="mkPages"></div>
+  <label>Ending line (optional)</label>
+  <input type="text" id="mkMoral" placeholder="e.g. What a happy day!" maxlength="140">
+  <div class="bar">
+    <button class="big ghost" id="mkPreview">▶ Preview</button>
+    <button class="big" id="mkSave">💾 Save story</button>
+  </div>
+</section>
+
+<!-- ================= PLAYER ================= -->
+<section id="player" class="hidden">
+  <div id="stage"></div>
+  <div id="hud">
+    <button class="pill" id="homeBtn">🏠</button>
+    <div class="grow"><div id="progress"><i></i></div></div>
+    <span class="pill" id="counter">⭐ 0</span>
+  </div>
+  <div id="caption"></div>
+  <div id="theend" class="hidden">
+    <h2>The End 🎉</h2>
+    <div class="moral" id="moral"></div>
+    <div class="row" style="justify-content:center">
+      <button class="big" id="againBtn">🔁 Play again</button>
+      <button class="big alt" id="endHome">🏠 Home</button>
+    </div>
+  </div>
+  <div id="curtain">
+    <div class="half"></div><div class="half"></div>
+    <div class="label"><b>🎬 Story time!</b><span id="curtainTitle"></span><br><small>tap to open the curtain</small></div>
+  </div>
+</section>
+
+<script>
+/* =====================================================================
+   Story format
+   ---------------------------------------------------------------------
+   { id, title:{en,hi}, cover, bg, moral:{en,hi}, counter:'⭐',
+     scenes: [{
+       sky: CSS background,
+       actors: [{ id, e: emoji, x:%, y:%, s: size(vmin), cls }],   // placed/moved actors
+       text: {en, hi},
+       tap: { target: actorId, times: n, hint:{en,hi}, onTap(i, api) }  // optional interaction
+     }]}
+   Custom (picture) stories use scenes [{ img: dataURL, text }] instead.
+   ===================================================================== */
+
+const L = (o) => (typeof o === 'string' ? o : (o[state.lang] || o.en));
+
+const BUILTIN = [
+  {
+    id: 'crow', cover: '🐦‍⬛', bg: '#ffe7b3',
+    title: { en: 'The Thirsty Crow', hi: 'प्यासा कौवा' },
+    moral: { en: 'Where there is a will, there is a way!', hi: 'जहाँ चाह, वहाँ राह!' },
+    counter: '💧', goal: 5,
+    scenes: [
+      { sky: 'linear-gradient(#ffd27a,#ffb347 60%,#e9a35a 60%,#d88c45)',
+        actors: [{ id: 'sun', e: '☀️', x: 80, y: 16, s: 20, cls: 'spin' },
+                 { id: 'crow', e: '🐦‍⬛', x: 20, y: 30, s: 18, cls: 'fly' },
+                 { id: 'h1', e: '🛖', x: 70, y: 58, s: 22 }, { id: 't1', e: '🌴', x: 12, y: 56, s: 24 }],
+        text: { en: 'It was a very hot day. A crow was flying over the village.', hi: 'एक बहुत गर्मी का दिन था। एक कौवा गाँव के ऊपर उड़ रहा था।' } },
+      { sky: 'linear-gradient(#ffd27a,#ffb347 60%,#e9a35a 60%,#d88c45)',
+        actors: [{ id: 'sun', e: '☀️', x: 80, y: 16, s: 20, cls: 'spin' },
+                 { id: 'crow', e: '🐦‍⬛', x: 50, y: 42, s: 18, cls: 'shake' },
+                 { id: 'sweat', e: '💦', x: 60, y: 34, s: 8, cls: 'bob' }],
+        text: { en: '"I am so thirsty!" said the crow. "I need water!"', hi: '"मुझे बहुत प्यास लगी है!" कौवे ने कहा। "मुझे पानी चाहिए!"' } },
+      { sky: 'linear-gradient(#ffe2a1,#ffc773 60%,#c99a6b 60%,#b5865a)',
+        actors: [{ id: 'crow', e: '🐦‍⬛', x: 30, y: 50, s: 16, cls: 'bob' },
+                 { id: 'pot', e: '🏺', x: 60, y: 58, s: 30 },
+                 { id: 'q', e: '❓', x: 34, y: 34, s: 9, cls: 'pulse' }],
+        text: { en: 'He found a pot. But the water was at the very bottom. His beak could not reach it.', hi: 'उसे एक मटका मिला। पर पानी बहुत नीचे था। उसकी चोंच वहाँ तक नहीं पहुँची।' } },
+      { sky: 'linear-gradient(#ffe2a1,#ffc773 60%,#c99a6b 60%,#b5865a)',
+        actors: [{ id: 'crow', e: '🐦‍⬛', x: 30, y: 50, s: 16 },
+                 { id: 'idea', e: '💡', x: 34, y: 30, s: 14, cls: 'pulse' },
+                 { id: 'pot', e: '🏺', x: 60, y: 58, s: 30 },
+                 { id: 'pile', e: '🪨', x: 84, y: 70, s: 16 }],
+        text: { en: 'Then he had an idea! He saw some pebbles nearby.', hi: 'तभी उसे एक तरकीब सूझी! पास में कुछ कंकड़ पड़े थे।' } },
+      { sky: 'linear-gradient(#ffe2a1,#ffc773 60%,#c99a6b 60%,#b5865a)',
+        water: true,
+        actors: [{ id: 'crow', e: '🐦‍⬛', x: 30, y: 46, s: 16, cls: 'bob' },
+                 { id: 'pot', e: '🏺', x: 55, y: 58, s: 34 },
+                 { id: 'pile', e: '🪨', x: 84, y: 70, s: 18, cls: 'tapme' }],
+        text: { en: 'Help the crow! Tap the pebbles to drop them into the pot.', hi: 'कौवे की मदद करो! कंकड़ पर टैप करके उन्हें मटके में डालो।' },
+        tap: { target: 'pile', times: 5,
+               hint: { en: 'Tap the pebbles 🪨', hi: 'कंकड़ पर टैप करो 🪨' },
+               onTap(i, api) { api.flyPebble(); api.setWater(i / 5); } } },
+      { sky: 'linear-gradient(#bdf0ff,#8fdcff 60%,#9bd27a 60%,#7bbf5a)',
+        actors: [{ id: 'crow', e: '🐦‍⬛', x: 50, y: 40, s: 22, cls: 'fly' },
+                 { id: 'drop', e: '💧', x: 64, y: 32, s: 10, cls: 'bob' },
+                 { id: 'spark', e: '✨', x: 36, y: 26, s: 12, cls: 'pulse' }],
+        text: { en: 'The water came up! The crow drank happily and flew away.', hi: 'पानी ऊपर आ गया! कौवे ने खुशी से पानी पिया और उड़ गया।' } },
+    ],
+  },
+  {
+    id: 'race', cover: '🐢', bg: '#c8f2c2',
+    title: { en: 'The Hare and the Tortoise', hi: 'खरगोश और कछुआ' },
+    moral: { en: 'Slow and steady wins the race!', hi: 'धीरे-धीरे चलने वाला भी जीत जाता है!' },
+    counter: '🐢', goal: 6,
+    scenes: [
+      { sky: 'linear-gradient(#a8e6ff,#d6f5ff 55%,#7ccf6b 55%,#5fb54f)',
+        actors: [{ id: 'tree', e: '🌳', x: 15, y: 46, s: 30 }, { id: 'tree2', e: '🌲', x: 88, y: 44, s: 26 },
+                 { id: 'hare', e: '🐇', x: 38, y: 66, s: 18, cls: 'bob' }, { id: 'tort', e: '🐢', x: 62, y: 70, s: 16 }],
+        text: { en: 'In a forest lived a fast hare and a slow tortoise.', hi: 'एक जंगल में एक तेज़ खरगोश और एक धीमा कछुआ रहते थे।' } },
+      { sky: 'linear-gradient(#a8e6ff,#d6f5ff 55%,#7ccf6b 55%,#5fb54f)',
+        actors: [{ id: 'hare', e: '🐇', x: 38, y: 66, s: 18, cls: 'bob' }, { id: 'laugh', e: '😂', x: 38, y: 46, s: 10, cls: 'pulse' },
+                 { id: 'tort', e: '🐢', x: 62, y: 70, s: 16 }],
+        text: { en: '"You are so slow!" laughed the hare. "Let us have a race!" said the tortoise.', hi: '"तुम कितने धीमे हो!" खरगोश हँसा। "चलो दौड़ लगाते हैं!" कछुए ने कहा।' } },
+      { sky: 'linear-gradient(#a8e6ff,#d6f5ff 55%,#7ccf6b 55%,#5fb54f)',
+        actors: [{ id: 'flag', e: '🏁', x: 90, y: 60, s: 18 },
+                 { id: 'hare', e: '🐇', x: 10, y: 66, s: 18, cls: 'walk' }, { id: 'tort', e: '🐢', x: 10, y: 76, s: 16 }],
+        after: [{ id: 'hare', x: 60 }],
+        text: { en: 'Ready, steady, GO! The hare ran very fast and was soon far ahead.', hi: 'तैयार, शुरू! खरगोश बहुत तेज़ भागा और जल्दी ही बहुत आगे निकल गया।' } },
+      { sky: 'linear-gradient(#ffd8a8,#ffe9c9 55%,#7ccf6b 55%,#5fb54f)',
+        actors: [{ id: 'flag', e: '🏁', x: 90, y: 60, s: 18 }, { id: 'tree', e: '🌳', x: 58, y: 48, s: 30 },
+                 { id: 'hare', e: '🐇', x: 60, y: 66, s: 18 }, { id: 'z', e: '💤', x: 66, y: 52, s: 10, cls: 'zzz' },
+                 { id: 'tort', e: '🐢', x: 10, y: 76, s: 16 }],
+        text: { en: '"The tortoise is so far behind," thought the hare. "I will take a nap." Z z z…', hi: '"कछुआ तो बहुत पीछे है," खरगोश ने सोचा। "मैं थोड़ी देर सो जाता हूँ।" ज़ ज़ ज़…' } },
+      { sky: 'linear-gradient(#ffc0a0,#ffd9b8 55%,#7ccf6b 55%,#5fb54f)',
+        actors: [{ id: 'flag', e: '🏁', x: 90, y: 60, s: 18 }, { id: 'tree', e: '🌳', x: 58, y: 48, s: 30 },
+                 { id: 'hare', e: '🐇', x: 60, y: 66, s: 18 }, { id: 'z', e: '💤', x: 66, y: 52, s: 10, cls: 'zzz' },
+                 { id: 'tort', e: '🐢', x: 10, y: 76, s: 16, cls: 'tapme' }],
+        text: { en: 'The tortoise kept walking, step by step. Tap the tortoise to help him walk!', hi: 'कछुआ कदम-कदम चलता रहा। कछुए पर टैप करो और उसे चलाओ!' },
+        tap: { target: 'tort', times: 6,
+               hint: { en: 'Tap the tortoise 🐢', hi: 'कछुए पर टैप करो 🐢' },
+               onTap(i, api) { api.move('tort', 10 + i * 13.5); } } },
+      { sky: 'linear-gradient(#ffb199,#ffd1b8 55%,#7ccf6b 55%,#5fb54f)',
+        actors: [{ id: 'flag', e: '🏁', x: 90, y: 60, s: 18 }, { id: 'tort', e: '🐢', x: 88, y: 76, s: 18, cls: 'bob' },
+                 { id: 'hare', e: '🐇', x: 60, y: 66, s: 18, cls: 'shake' }, { id: 'wow', e: '😲', x: 60, y: 48, s: 10 },
+                 { id: 'trophy', e: '🏆', x: 88, y: 40, s: 14, cls: 'pulse' }],
+        text: { en: 'The hare woke up and ran — but too late! The tortoise had won the race!', hi: 'खरगोश जागा और भागा — पर बहुत देर हो गई! कछुआ दौड़ जीत गया!' } },
+    ],
+  },
+  {
+    id: 'seed', cover: '🌱', bg: '#e0f3ff',
+    title: { en: 'The Little Seed', hi: 'छोटा सा बीज' },
+    moral: { en: 'With a little care, small things grow big!', hi: 'थोड़ी देखभाल से छोटी चीज़ें भी बड़ी हो जाती हैं!' },
+    counter: '🌧️', goal: 4,
+    scenes: [
+      { sky: 'linear-gradient(#cdeeff,#f0fbff 60%,#a5753f 60%,#8a5e30)',
+        actors: [{ id: 'girl', e: '👧', x: 30, y: 52, s: 22, cls: 'bob' }, { id: 'seed', e: '🫘', x: 60, y: 66, s: 8 }],
+        text: { en: 'Meera found a tiny seed. She planted it in the soil.', hi: 'मीरा को एक छोटा सा बीज मिला। उसने उसे मिट्टी में बो दिया।' } },
+      { sky: 'linear-gradient(#9fb7c9,#c9d8e3 60%,#a5753f 60%,#8a5e30)',
+        actors: [{ id: 'cloud', e: '🌧️', x: 60, y: 22, s: 22, cls: 'tapme' }, { id: 'seed', e: '🫘', x: 60, y: 66, s: 8 },
+                 { id: 'girl', e: '👧', x: 22, y: 52, s: 20 }],
+        text: { en: 'The seed needs water. Tap the cloud to make it rain!', hi: 'बीज को पानी चाहिए। बादल पर टैप करो और बारिश कराओ!' },
+        tap: { target: 'cloud', times: 4,
+               hint: { en: 'Tap the cloud 🌧️', hi: 'बादल पर टैप करो 🌧️' },
+               onTap(i, api) {
+                 api.rain();
+                 const seq = ['🫘', '🌱', '🌿', '🪴', '🌻'];
+                 api.swap('seed', seq[i], 8 + i * 6, 66 - i * 5);
+               } } },
+      { sky: 'linear-gradient(#ffe48a,#fff6c9 60%,#a5753f 60%,#8a5e30)',
+        actors: [{ id: 'sun', e: '☀️', x: 80, y: 16, s: 18, cls: 'spin' }, { id: 'flower', e: '🌻', x: 60, y: 44, s: 40, cls: 'bob' },
+                 { id: 'girl', e: '👧', x: 24, y: 52, s: 22 }, { id: 'bee', e: '🐝', x: 76, y: 34, s: 9, cls: 'fly' },
+                 { id: 'heart', e: '💛', x: 30, y: 32, s: 9, cls: 'pulse' }],
+        text: { en: 'Sun and rain helped it grow. Now it is a big, bright sunflower!', hi: 'धूप और बारिश से वह बड़ा हुआ। अब वह एक बड़ा, चमकीला सूरजमुखी है!' } },
+    ],
+  },
+];
+
+/* ---------- State & storage ---------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
+};
+const state = {
+  lang: store.get('psb.lang', 'en'),
+  voice: store.get('psb.voice', true),
+  mine: store.get('psb.mine', []),
+  story: null, idx: 0, score: 0, busy: false, taps: 0,
+};
+const $ = (s) => document.querySelector(s);
+const show = (id) => ['home', 'maker', 'player'].forEach((x) => $('#' + x).classList.toggle('hidden', x !== id));
+
+/* ---------- Speech ---------- */
+function speak(text) {
+  if (!state.voice || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text.replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu, ''));
+  const want = state.lang === 'hi' ? 'hi' : 'en';
+  const v = speechSynthesis.getVoices().find((x) => x.lang.toLowerCase().startsWith(want + '-in'))
+         || speechSynthesis.getVoices().find((x) => x.lang.toLowerCase().startsWith(want));
+  if (v) u.voice = v;
+  u.lang = want === 'hi' ? 'hi-IN' : 'en-IN';
+  u.rate = 0.9; u.pitch = 1.1;
+  speechSynthesis.speak(u);
+}
+function blip(freq = 660) {
+  try {
+    const ctx = blip.ctx || (blip.ctx = new (window.AudioContext || window.webkitAudioContext)());
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = freq; o.type = 'triangle';
+    g.gain.setValueAtTime(.2, ctx.currentTime); g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .25);
+    o.connect(g).connect(ctx.destination); o.start(); o.stop(ctx.currentTime + .25);
+  } catch {}
+}
+
+/* ---------- Home ---------- */
+function renderHome() {
+  document.querySelectorAll('[data-lang]').forEach((b) => b.classList.toggle('on', b.dataset.lang === state.lang));
+  $('#voiceBtn').textContent = state.voice ? '🔊 Voice on' : '🔇 Voice off';
+  $('#builtins').innerHTML = '';
+  for (const s of BUILTIN) {
+    const c = card(s.cover, L(s.title), s.scenes.length + (state.lang === 'hi' ? ' दृश्य' : ' scenes'), () => play(s));
+    c.querySelector('.thumb').style.background = s.bg;
+    $('#builtins').append(c);
+  }
+  $('#mine').innerHTML = '';
+  const mk = card('➕', state.lang === 'hi' ? 'नई कहानी बनाओ' : 'Make a new story', state.lang === 'hi' ? 'अपनी तस्वीरों से' : 'from your own pictures', () => openMaker());
+  mk.classList.add('make');
+  $('#mine').append(mk);
+  state.mine.forEach((s, i) => {
+    const c = card('', s.title || 'My story', s.scenes.length + ' pictures', () => play(s));
+    c.querySelector('.thumb').style.backgroundImage = `url(${s.scenes[0]?.img})`;
+    const row = document.createElement('div'); row.className = 'row';
+    const ed = document.createElement('button'); ed.className = 'del'; ed.textContent = '✏️ Edit';
+    ed.onclick = (e) => { e.stopPropagation(); openMaker(i); };
+    const del = document.createElement('button'); del.className = 'del'; del.textContent = '🗑 Delete';
+    del.style.marginLeft = '12px';
+    del.onclick = (e) => {
+      e.stopPropagation();
+      if (confirm('Delete this story?')) { state.mine.splice(i, 1); store.set('psb.mine', state.mine); renderHome(); }
+    };
+    row.append(ed, del); c.append(row);
+    $('#mine').append(c);
+  });
+}
+function card(emoji, title, sub, onClick) {
+  const c = document.createElement('div');
+  c.className = 'card'; c.setAttribute('role', 'button'); c.tabIndex = 0;
+  c.innerHTML = `<div class="thumb">${emoji}</div><b></b><small></small>`;
+  c.querySelector('b').textContent = title; c.querySelector('small').textContent = sub;
+  c.onclick = onClick; c.onkeydown = (e) => { if (e.key === 'Enter') onClick(); };
+  return c;
+}
+document.querySelectorAll('[data-lang]').forEach((b) => b.onclick = () => { state.lang = b.dataset.lang; store.set('psb.lang', state.lang); renderHome(); });
+$('#voiceBtn').onclick = () => { state.voice = !state.voice; store.set('psb.voice', state.voice); renderHome(); };
+
+/* ---------- Maker: create a story from pictures ---------- */
+let draft = null, editing = -1;
+function openMaker(i = -1) {
+  editing = i;
+  draft = i >= 0 ? JSON.parse(JSON.stringify(state.mine[i])) : { id: 'my' + Date.now(), custom: true, title: '', moral: '', scenes: [] };
+  $('#mkTitle').value = draft.title; $('#mkMoral').value = draft.moral || '';
+  renderPages(); show('maker');
+}
+function renderPages() {
+  const box = $('#mkPages'); box.innerHTML = '';
+  draft.scenes.forEach((sc, i) => {
+    const p = document.createElement('div'); p.className = 'page';
+    p.innerHTML = `<img alt=""><div><textarea placeholder="Picture ${i + 1}: what is happening here?"></textarea>
+      <div class="tools"><button data-a="up">⬆</button><button data-a="down">⬇</button><button data-a="fit">🔍 Fit</button><button data-a="rm">🗑</button></div></div>`;
+    p.querySelector('img').src = sc.img;
+    const ta = p.querySelector('textarea'); ta.value = sc.text || '';
+    ta.oninput = () => { sc.text = ta.value; };
+    p.querySelector('[data-a=fit]').textContent = sc.fit ? '🔍 Fit ✓' : '🔍 Fit';
+    p.querySelectorAll('.tools button').forEach((b) => b.onclick = () => {
+      const a = b.dataset.a, s = draft.scenes;
+      if (a === 'rm') s.splice(i, 1);
+      if (a === 'up' && i > 0) [s[i - 1], s[i]] = [s[i], s[i - 1]];
+      if (a === 'down' && i < s.length - 1) [s[i + 1], s[i]] = [s[i], s[i + 1]];
+      if (a === 'fit') sc.fit = !sc.fit;
+      renderPages();
+    });
+    box.append(p);
+  });
+}
+// Shrink each photo so stories fit in browser storage.
+function shrink(file, max = 960) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      res(c.toDataURL('image/jpeg', 0.72));
+    };
+    img.onerror = rej;
+    img.src = URL.createObjectURL(file);
+  });
+}
+$('#mkFiles').onchange = async (e) => {
+  for (const f of e.target.files) {
+    try { draft.scenes.push({ img: await shrink(f), text: '' }); } catch {}
+  }
+  e.target.value = ''; renderPages();
+};
+function collectDraft() {
+  draft.title = $('#mkTitle').value.trim() || 'My story';
+  draft.moral = $('#mkMoral').value.trim();
+  if (!draft.scenes.length) { alert('Add at least one picture first 📷'); return null; }
+  return draft;
+}
+$('#mkPreview').onclick = () => { const d = collectDraft(); if (d) play(d, true); };
+$('#mkSave').onclick = () => {
+  const d = collectDraft(); if (!d) return;
+  const list = state.mine.slice();
+  if (editing >= 0) list[editing] = d; else list.unshift(d);
+  if (!store.set('psb.mine', list)) { alert('Not enough space to save. Try fewer or smaller pictures.'); return; }
+  state.mine = list; renderHome(); show('home');
+};
+$('#makerBack').onclick = () => { renderHome(); show('home'); };
+
+/* ---------- Player ---------- */
+let fromMaker = false;
+function play(story, preview = false) {
+  fromMaker = preview;
+  state.story = story; state.idx = 0; state.score = 0;
+  $('#theend').classList.add('hidden');
+  $('#curtainTitle').textContent = story.custom ? story.title : L(story.title);
+  $('#curtain').classList.remove('open', 'hidden');
+  $('#stage').innerHTML = ''; $('#caption').textContent = '';
+  updateHud(); show('player');
+}
+$('#curtain').onclick = () => {
+  const c = $('#curtain'); if (c.classList.contains('open')) return;
+  c.classList.add('open'); blip(520);
+  setTimeout(() => c.classList.add('hidden'), 1300);
+  renderScene();
+};
+function updateHud() {
+  const s = state.story; if (!s) return;
+  const pct = Math.round((state.idx / s.scenes.length) * 100);
+  $('#progress i').style.width = pct + '%';
+  $('#counter').textContent = s.custom ? `📖 ${Math.min(state.idx + 1, s.scenes.length)} / ${s.scenes.length}`
+    : `${s.counter} ${state.score} / ${s.goal}`;
+}
+
+const api = {
+  actor: (id) => $('#stage').querySelector(`[data-id="${id}"]`),
+  move(id, x, y) { const a = api.actor(id); if (!a) return; a.style.left = x + '%'; if (y != null) a.style.top = y + '%'; },
+  swap(id, e, s, y) { const a = api.actor(id); if (!a) return; a.textContent = e; a.style.fontSize = s + 'vmin'; if (y != null) a.style.top = y + '%'; },
+  setWater(f) { const w = $('#stage .water'); if (w) w.style.height = (2 + f * 11) + '%'; },
+  flyPebble() {
+    const p = document.createElement('div'); p.className = 'actor'; p.textContent = '🪨';
+    Object.assign(p.style, { left: '84%', top: '66%', fontSize: '7vmin' });
+    $('#stage').append(p);
+    requestAnimationFrame(() => requestAnimationFrame(() => { p.style.left = '55%'; p.style.top = '52%'; }));
+    setTimeout(() => { p.style.opacity = 0; }, 1400); setTimeout(() => p.remove(), 2100);
+  },
+  rain() {
+    for (let k = 0; k < 6; k++) {
+      const d = document.createElement('div'); d.className = 'confetti'; d.textContent = '💧';
+      d.style.left = (48 + Math.random() * 24) + '%'; d.style.top = '28%';
+      d.style.animationDuration = (1 + Math.random()) + 's'; d.style.fontSize = '20px';
+      $('#stage').append(d); setTimeout(() => d.remove(), 2200);
+    }
+  },
+};
+
+function renderScene() {
+  const s = state.story, sc = s.scenes[state.idx], stage = $('#stage');
+  stage.innerHTML = '';
+  state.taps = 0; state.busy = false;
+  if (s.custom) {
+    stage.style.background = '#111';
+    const ph = document.createElement('div'); ph.className = 'photo' + (sc.fit ? ' fit' : '');
+    ph.style.backgroundImage = `url(${sc.img})`;
+    stage.append(ph);
+    setCaption(sc.text || '', state.lang === 'hi' ? 'आगे के लिए टैप करो ▶' : 'tap for next ▶');
+    speak(sc.text || '');
+  } else {
+    stage.style.background = '';
+    const sky = document.createElement('div'); sky.className = 'sky'; sky.style.background = sc.sky; stage.append(sky);
+    if (sc.water) {
+      const w = document.createElement('div'); w.className = 'water';
+      Object.assign(w.style, { left: '50%', width: '10%', bottom: '34%', height: '2%' });
+      w.style.zIndex = 2; w.style.opacity = .85;
+      stage.append(w);
+    }
+    for (const a of sc.actors) {
+      const el = document.createElement('div');
+      el.className = 'actor ' + (a.cls || ''); el.dataset.id = a.id; el.textContent = a.e;
+      Object.assign(el.style, { left: a.x + '%', top: a.y + '%', fontSize: a.s + 'vmin' });
+      stage.append(el);
+    }
+    if (sc.after) setTimeout(() => sc.after.forEach((m) => api.move(m.id, m.x, m.y)), 400);
+    const hint = sc.tap ? L(sc.tap.hint) : (state.lang === 'hi' ? 'आगे के लिए टैप करो ▶' : 'tap for next ▶');
+    setCaption(L(sc.text), hint);
+    speak(L(sc.text));
+    if (sc.tap) {
+      const t = api.actor(sc.tap.target);
+      t.onclick = (e) => {
+        e.stopPropagation();
+        if (state.taps >= sc.tap.times) return;
+        state.taps++; state.score++; blip(500 + state.taps * 80);
+        sc.tap.onTap(state.taps, api); updateHud();
+        if (state.taps >= sc.tap.times) {
+          t.classList.remove('tapme');
+          setCaption(L(sc.text), state.lang === 'hi' ? 'शाबाश! आगे के लिए टैप करो ▶' : 'Well done! tap for next ▶');
+          speak(state.lang === 'hi' ? 'शाबाश!' : 'Well done!');
+        }
+      };
+    } else if (!s.custom) {
+      state.score = Math.min(s.goal, state.score); // story-only scenes don't change the counter
+    }
+  }
+  updateHud();
+}
+function setCaption(text, hint) {
+  const c = $('#caption'); c.textContent = text;
+  const h = document.createElement('span'); h.className = 'hint'; h.textContent = hint; c.append(h);
+  c.classList.toggle('hidden', !text && !hint);
+}
+function next() {
+  const s = state.story; if (!s || !$('#curtain').classList.contains('open')) return;
+  if (!$('#theend').classList.contains('hidden')) return;
+  const sc = s.scenes[state.idx];
+  if (sc && sc.tap && state.taps < sc.tap.times) { const t = api.actor(sc.tap.target); t && t.animate([{ filter: 'brightness(1.6)' }, { filter: 'none' }], 500); return; }
+  state.idx++;
+  if (state.idx >= s.scenes.length) return theEnd();
+  blip(440); renderScene();
+}
+function theEnd() {
+  updateHud();
+  const s = state.story;
+  const moral = s.custom ? (s.moral || '') : L(s.moral);
+  $('#moral').textContent = moral;
+  $('#theend').classList.remove('hidden');
+  speak((state.lang === 'hi' ? 'समाप्त! ' : 'The end! ') + moral);
+  const set = s.custom ? ['⭐', '🎈', '💖'] : ['⭐', '🎉', s.cover];
+  for (let k = 0; k < 30; k++) {
+    const d = document.createElement('div'); d.className = 'confetti';
+    d.textContent = set[k % set.length]; d.style.left = Math.random() * 100 + '%';
+    d.style.animationDuration = (2 + Math.random() * 2) + 's'; d.style.animationDelay = Math.random() + 's';
+    $('#theend').append(d); setTimeout(() => d.remove(), 5000);
+  }
+}
+function exitPlayer() {
+  speechSynthesis?.cancel?.();
+  if (fromMaker) show('maker'); else { renderHome(); show('home'); }
+}
+$('#stage').onclick = next;
+$('#caption').onclick = next;
+$('#homeBtn').onclick = exitPlayer;
+$('#endHome').onclick = exitPlayer;
+$('#againBtn').onclick = () => play(state.story, fromMaker);
+document.addEventListener('keydown', (e) => {
+  if ($('#player').classList.contains('hidden')) return;
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); $('#curtain').classList.contains('open') ? next() : $('#curtain').click(); }
+  if (e.key === 'Escape') exitPlayer();
+});
+// Swipe up / left to advance, like a reel.
+let y0 = null, x0 = null;
+$('#player').addEventListener('touchstart', (e) => { y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; }, { passive: true });
+$('#player').addEventListener('touchend', (e) => {
+  if (y0 == null) return;
+  const dy = y0 - e.changedTouches[0].clientY, dx = x0 - e.changedTouches[0].clientX;
+  if (Math.max(dy, dx) > 60) next();
+  y0 = x0 = null;
+}, { passive: true });
+if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => {};
+
+renderHome();
+</script>
+</body>
+</html>
